@@ -1,0 +1,79 @@
+[gd_scene load_steps=7 format=3 uid="uid://b7gackwwhgqxy"]
+
+[ext_resource type="Script" uid="uid://dceseljjdd3xl" path="res://scripts/Main.gd" id="1_rarhs"]
+[ext_resource type="Texture2D" uid="uid://bx4l4oqk2g4bk" path="res://assets/sprites/eggs/xeno/egg_xeno.png" id="1_rvslj"]
+[ext_resource type="Texture2D" uid="uid://bo1mri75r2thq" path="res://assets/sprites/creatures/xeno/xeno_front.png" id="2_0bbpv"]
+[ext_resource type="Script" uid="uid://cw5nx8wx5s1wk" path="res://scripts/FlashOverlay.gd" id="3_0bbpv"]
+[ext_resource type="Script" uid="uid://d1p3lt6g22xt4" path="res://scripts/BitsManager.gd" id="4_vcsgt"]
+
+[sub_resource type="Environment" id="Environment_0bbpv"]
+background_mode = 1
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_rarhs")
+
+[node name="Background" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 1)
+
+[node name="Egg" type="Sprite2D" parent="."]
+position = Vector2(360, 640)
+texture = ExtResource("1_rvslj")
+
+[node name="CrackFX" type="GPUParticles2D" parent="Egg"]
+emitting = false
+
+[node name="Creature" type="Sprite2D" parent="."]
+visible = false
+texture = ExtResource("2_0bbpv")
+offset = Vector2(360, 640)
+
+[node name="BitsLayer" type="Node2D" parent="."]
+
+[node name="BitsManager" type="Node2D" parent="BitsLayer"]
+script = ExtResource("4_vcsgt")
+
+[node name="InputCanvas" type="Node2D" parent="."]
+
+[node name="Stroke" type="Line2D" parent="InputCanvas"]
+width = 6.0
+
+[node name="EggTimer" type="Timer" parent="."]
+wait_time = 60.0
+one_shot = true
+autostart = true
+
+[node name="UI_Min" type="CanvasLayer" parent="."]
+
+[node name="Label" type="Label" parent="UI_Min"]
+offset_right = 40.0
+offset_bottom = 23.0
+text = "Estado: Egg"
+
+[node name="FlashOverlay" type="CanvasLayer" parent="."]
+script = ExtResource("3_0bbpv")
+
+[node name="Flash" type="ColorRect" parent="FlashOverlay"]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="WorldEnv" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_0bbpv")
+
+[node name="TapCatcher" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
