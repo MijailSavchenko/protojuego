@@ -1,9 +1,11 @@
-[gd_scene load_steps=7 format=3 uid="uid://b7gackwwhgqxy"]
+[gd_scene load_steps=9 format=3 uid="uid://b7gackwwhgqxy"]
 
 [ext_resource type="Script" uid="uid://dceseljjdd3xl" path="res://scripts/Main.gd" id="1_rarhs"]
 [ext_resource type="Texture2D" uid="uid://bx4l4oqk2g4bk" path="res://assets/sprites/eggs/xeno/egg_xeno.png" id="1_rvslj"]
 [ext_resource type="Texture2D" uid="uid://bo1mri75r2thq" path="res://assets/sprites/creatures/xeno/xeno_front.png" id="2_0bbpv"]
 [ext_resource type="Script" uid="uid://cw5nx8wx5s1wk" path="res://scripts/FlashOverlay.gd" id="3_0bbpv"]
+[ext_resource type="Script" uid="uid://0kp17xvd344w" path="res://scripts/Egg.gd" id="3_nxtc6"]
+[ext_resource type="Texture2D" uid="uid://dkv5m6mb11fnt" path="res://assets/sprites/eggs/xeno/egg_xeno_broken.png" id="4_jlsqs"]
 [ext_resource type="Script" uid="uid://d1p3lt6g22xt4" path="res://scripts/BitsManager.gd" id="4_vcsgt"]
 
 [sub_resource type="Environment" id="Environment_0bbpv"]
@@ -24,6 +26,8 @@ color = Color(0, 0, 0, 1)
 [node name="Egg" type="Sprite2D" parent="."]
 position = Vector2(360, 640)
 texture = ExtResource("1_rvslj")
+script = ExtResource("3_nxtc6")
+broken_texture = ExtResource("4_jlsqs")
 
 [node name="CrackFX" type="GPUParticles2D" parent="Egg"]
 emitting = false
@@ -31,7 +35,6 @@ emitting = false
 [node name="Creature" type="Sprite2D" parent="."]
 visible = false
 texture = ExtResource("2_0bbpv")
-offset = Vector2(360, 640)
 
 [node name="BitsLayer" type="Node2D" parent="."]
 

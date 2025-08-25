@@ -1,3 +1,4 @@
+# res://scripts/BitsManager.gd
 extends Node2D
 
 @export var bit_scene: PackedScene = preload("res://scenes/Bit.tscn")
@@ -124,16 +125,19 @@ func _start_ritual_sequence() -> void:
 		if is_instance_valid(b) and b.has_method("start_merge"):
 			b.start_merge(pointer_pos)
 
-	if flash_overlay and flash_overlay.has_method("play"):
-		if egg:
-			egg.global_position = get_viewport_rect().size * 0.5
+	# Posicionar el huevo JUSTO donde quedó el dedo
+	if egg:
+		# Si el nodo tiene script con start_lifecycle, úsalo (lo tiene)
+		if egg.has_method("start_lifecycle"):
+			egg.call("start_lifecycle", pointer_pos)
+		else:
+			egg.global_position = pointer_pos
 			egg.visible = true
+
+	if flash_overlay and flash_overlay.has_method("play"):
 		flash_overlay.call("play", flash_color, flash_duration)
 		flash_overlay.connect("flash_finished", Callable(self, "_on_flash_finished"), CONNECT_ONE_SHOT)
 	else:
-		if egg:
-			egg.global_position = get_viewport_rect().size * 0.5
-			egg.visible = true
 		_on_flash_finished()
 
 func _on_flash_finished() -> void:
