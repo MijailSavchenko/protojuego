@@ -13,41 +13,47 @@ const TYPE_COLOR := {
 }
 const WHITE := Color8(255, 255, 255)
 
-# Visual
-@export var pixel_scale: float = 0.10        # (tu escena ya lo tiene a 1.0)
+# ───── Visual
+@export var pixel_scale: float = 1.0
 @export var fade_in_time: float = 2.0
 @export var halo_size_px: int = 24
 @export var halo_alpha: float = 0.35
 
-# Ciclo / color
+# ───── Ciclo / color
 @export var idle_to_cycle_delay: float = 5.0
 @export var revert_to_white_time: float = 25.0
 @export var color_blend_time: float = 1.25
 @export var type_cycle_seconds: float = 3.0
 
-# Movimiento global
-@export var base_speed: float = 80.0
-@export var max_speed: float = 150.0
+# ───── Movimiento global (ligero boost)
+@export var base_speed: float = 90.0
+@export var max_speed: float = 170.0
 @export var bounce_damping: float = 1.0
-@export var drift_speed: float = 60.0
-@export var drift_turn_speed: float = 0.25
+@export var drift_speed: float = 70.0
+@export var drift_turn_speed: float = 0.30
 
-# Interacción (acercamiento/orbita)
+# ───── Interacción (acercamiento/orbita) — órbita más ágil
 @export var attract_radius: float = 60.0
-@export var stand_off_radius: float = 26.0
-@export var approach_lerp: float = 8.0
+@export var stand_off_radius: float = 22.0
+@export var approach_lerp: float = 14.0
 @export var tangent_slide: float = 0.6
 @export var spawn_grace_time: float = 0.4
 @export var scatter_duration: float = 1.0
 
-# Órbita estable
-@export var approach_ang_speed_min: float = 2.8
-@export var approach_ang_speed_max: float = 4.6
+# ───── Órbita estable — velocidad angular subida
+@export var approach_ang_speed_min: float = 3.8
+@export var approach_ang_speed_max: float = 6.8
 @export var approach_radius_jitter: float = 0.18
-@export var min_move_speed: float = 28.0
-@export var center_follow: float = 0.35
+@export var min_move_speed: float = 40.0
+@export var center_follow: float = 0.60
 
-# Nodos/estado
+# ───── Anti‑bordes suave
+@export var wall_margin: float = 36.0
+@export var wall_repulsion: float = 220.0
+@export var wall_tangent: float = 140.0
+@export var wall_steer_blend: float = 0.55
+
+# ───── Nodos/estado
 var core: Sprite2D
 var halo: Sprite2D
 var state: State = State.IDLE
@@ -220,17 +226,15 @@ func _apply_color(c: Color) -> void:
 	core.modulate = Color(c.r, c.g, c.b, core.modulate.a)
 	halo.modulate = Color(c.r, c.g, c.b, halo_alpha)
 
-# Latido visual para el ritual
+# Latido visual para el ritual (usado por BitsManager)
 func start_shine(intensity: float = 1.25, duration: float = 0.35) -> void:
 	if core == null or halo == null:
 		return
 	var s0: Vector2 = core.scale
 	var a0: float = halo.modulate.a
-
 	var tw1: Tween = create_tween()
 	tw1.tween_property(core, "scale", s0 * intensity, duration * 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	tw1.tween_property(core, "scale", s0, duration * 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-
 	var target_a: float = clamp(a0 + 0.25, 0.0, 1.0)
 	var tw2: Tween = create_tween()
 	tw2.tween_property(halo, "modulate:a", target_a, duration * 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
@@ -241,7 +245,6 @@ func start_merge(target: Vector2) -> void:
 	merging = true
 	merge_target = target
 	state = State.MERGE
-	# efecto visual sutil al iniciar el merge
 	var a0: float = halo.modulate.a
 	var tw := create_tween()
 	tw.tween_property(halo, "modulate:a", clamp(a0 + 0.2, 0.0, 1.0), 0.15).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
@@ -280,9 +283,37 @@ func _update_idle(delta: float) -> void:
 				var aa: float = _t * 1.3
 				type_vel = Vector2(cos(aa), sin(aa)) * (base_speed * 0.8)
 
-	var target: Vector2 = drift_vel + type_vel
-	vel = vel.move_toward(target, 70.0 * delta)
+	# Anti‑bordes (steering suave mezclado con la deriva)
+	var steer: Vector2 = _wall_steer()
+	var target: Vector2 = (drift_vel + type_vel).lerp(steer, wall_steer_blend)
+
+	vel = vel.move_toward(target, 75.0 * delta)
 	_move_and_rebound(delta)
+
+func _wall_steer() -> Vector2:
+	var vp: Vector2 = get_viewport_rect().size
+	var p: Vector2 = global_position
+	var steer: Vector2 = Vector2.ZERO
+
+	var near_left: bool = p.x <= wall_margin
+	var near_right: bool = p.x >= vp.x - wall_margin
+	var near_top: bool = p.y <= wall_margin
+	var near_bottom: bool = p.y >= vp.y - wall_margin
+
+	if near_left: steer.x += wall_repulsion
+	if near_right: steer.x -= wall_repulsion
+	if near_top: steer.y += wall_repulsion
+	if near_bottom: steer.y -= wall_repulsion
+
+	# Tangencial para que “deslice” y no se quede pegado
+	if near_left or near_right:
+		var vy := 1.0 if vel.y == 0.0 else vel.y
+		steer.y += sign(vy) * wall_tangent
+	if near_top or near_bottom:
+		var vx := 1.0 if vel.x == 0.0 else vel.x
+		steer.x += sign(vx) * wall_tangent
+
+	return steer
 
 func _start_approach() -> void:
 	state = State.APPROACH
@@ -355,3 +386,7 @@ func _rebound() -> void:
 func _random_dir() -> Vector2:
 	var d: Vector2 = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0))
 	return Vector2.RIGHT if d == Vector2.ZERO else d.normalized()
+
+# ───────── Integración con BitsManager (conteo por tipo)
+func get_type_id() -> String:
+	return current_type
