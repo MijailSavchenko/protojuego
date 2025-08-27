@@ -19,10 +19,10 @@ extends Sprite2D
 @export var t_phase4_hectic: float  = 30.0     # Agitación fuerte (antes de eclosionar)
 
 # ───────── Wobble (movimiento espontáneo)
-@export var wobble_quiet_amp: float  = 1.5
-@export var wobble_build_amp: float  = 4.0
-@export var wobble_broken_amp: float = 1.0
-@export var wobble_hectic_amp: float = 7.0
+@export var wobble_quiet_amp: float  = 4.0
+@export var wobble_build_amp: float  = 15.0
+@export var wobble_broken_amp: float = 4.0
+@export var wobble_hectic_amp: float = 15.0
 
 # ───────── Integración Creature
 @export var creature_path: NodePath            # (Opcional) arrastra Main/Creature

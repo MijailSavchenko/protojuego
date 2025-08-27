@@ -28,9 +28,6 @@ position = Vector2(360, 640)
 texture = ExtResource("1_rvslj")
 script = ExtResource("3_nxtc6")
 broken_texture = ExtResource("4_jlsqs")
-wobble_quiet_amp = 4.0
-wobble_build_amp = 15.0
-wobble_broken_amp = 4.0
 wobble_hectic_amp = 10.0
 
 [node name="CrackFX" type="GPUParticles2D" parent="Egg"]
