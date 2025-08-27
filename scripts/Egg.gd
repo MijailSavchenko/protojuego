@@ -1,34 +1,28 @@
 # res://scripts/Egg.gd
 extends Sprite2D
+#
+# NOTA rápida:
+# - Por defecto NO hace nada hasta que BitsManager llame a start_lifecycle(pos).
+# - Si quieres que arranque solo para pruebas, pon auto_start = true en el Inspector.
 
 # ───────── Config general
 @export var broken_texture: Texture2D          # Asigna egg_xeno_broken.png en el Inspector
 @export var drag_scale: float = 1.15           # Escala mientras arrastras
 @export var drag_shake_amp: float = 2.0        # Amplitud del “tembleque” al arrastrar
 @export var screen_margin: float = 0.0         # Margen al clamp con el viewport
+@export var auto_start: bool = false           # Si true, el ciclo arranca solo (útil pruebas)
 
-# ───────── Tiempos de eclosión (total ≈ 120 s por defecto)
-@export var t_phase1_quiet: float   = 30.0
-@export var t_phase2_build: float   = 30.0
-@export var t_phase3_broken: float  = 30.0
-@export var t_phase4_hectic: float  = 30.0
+# ───────── Tiempos de eclosión (total ≈ 120 s)
+@export var t_phase1_quiet: float   = 30.0     # Tranquilo, pequeños latidos
+@export var t_phase2_build: float   = 30.0     # Agitación clara (pre-rotura)
+@export var t_phase3_broken: float  = 30.0     # Textura rota, “descanso”
+@export var t_phase4_hectic: float  = 30.0     # Agitación fuerte (antes de eclosionar)
 
-# ───────── Wobble vertical (px) y giro (grados) por fase — “anclado abajo”
-@export var wobble_quiet_amp: float = 2.5
-@export var wobble_build_amp: float = 6.5
-@export var wobble_broken_amp: float = 1.6
-@export var wobble_hectic_amp: float = 11.0
-
-@export var rot_quiet_deg: float   = 2.0
-@export var rot_build_deg: float   = 6.0
-@export var rot_broken_deg: float  = 1.0
-@export var rot_hectic_deg: float  = 10.0
-
-# Velocidad relativa del temblor por fase
-@export var speed_quiet: float   = 1.5
-@export var speed_build: float   = 2.3
-@export var speed_broken: float  = 1.8
-@export var speed_hectic: float  = 3.2
+# ───────── Wobble (movimiento espontáneo)
+@export var wobble_quiet_amp: float  = 1.5
+@export var wobble_build_amp: float  = 4.0
+@export var wobble_broken_amp: float = 1.0
+@export var wobble_hectic_amp: float = 7.0
 
 # ───────── Integración Creature
 @export var creature_path: NodePath            # (Opcional) arrastra Main/Creature
@@ -42,14 +36,13 @@ var _dragging: bool = false
 var _grab_offset: Vector2 = Vector2.ZERO
 var _base_scale: Vector2
 var _rng := RandomNumberGenerator.new()
-
-# Posición de reposo para el “anclado abajo”
-var _rest_pos: Vector2
+var _active: bool = false                      # ← clave: bloquea el ciclo si no se ha invocado
+var _orig_texture: Texture2D                   # para restaurar al reiniciar ciclo
 
 func _ready() -> void:
 	_rng.randomize()
 	_base_scale = scale
-	_rest_pos = global_position
+	_orig_texture = texture
 
 	# Creature opcional
 	if creature_path != NodePath():
@@ -59,48 +52,57 @@ func _ready() -> void:
 	if creature_node:
 		creature_node.visible = false
 
-	visible = true
-	modulate.a = 1.0
-	rotation = 0.0
+	# Estado inicial
+	_active = auto_start
+	_timer = 0.0
+	_stage = Stage.QUIET
+	if not _active:
+		visible = false
+		# asegúrate de que el sprite vuelve a su textura original si venías de pruebas
+		if _orig_texture:
+			texture = _orig_texture
 
 func start_lifecycle(spawn_pos: Vector2) -> void:
 	# Llamado por BitsManager al finalizar ritual.
-	_rest_pos = spawn_pos
-	global_position = _rest_pos
+	global_position = spawn_pos
 	visible = true
+	_active = true
 	_stage = Stage.QUIET
 	_timer = 0.0
 	scale = _base_scale
-	rotation = 0.0
-	# La textura “normal” ya la pones en el editor.
+	if _orig_texture:
+		texture = _orig_texture
 
 func _process(delta: float) -> void:
+	if not _active:
+		return
+
 	_timer += delta
 
 	match _stage:
 		Stage.QUIET:
-			_apply_wobble_anchored(wobble_quiet_amp, rot_quiet_deg, speed_quiet)
+			_apply_anchor_wobble(wobble_quiet_amp, 1.3)
 			if _timer >= t_phase1_quiet:
 				_next_stage(Stage.BUILD)
 		Stage.BUILD:
-			_apply_wobble_anchored(wobble_build_amp, rot_build_deg, speed_build)
+			_apply_anchor_wobble(wobble_build_amp, 2.0)
 			if _timer >= t_phase1_quiet + t_phase2_build:
 				_break_egg()
 		Stage.BROKEN:
-			_apply_wobble_anchored(wobble_broken_amp, rot_broken_deg, speed_broken)
+			_apply_anchor_wobble(wobble_broken_amp, 1.5)
 			if _timer >= t_phase1_quiet + t_phase2_build + t_phase3_broken:
 				_next_stage(Stage.HECTIC)
 		Stage.HECTIC:
-			_apply_wobble_anchored(wobble_hectic_amp, rot_hectic_deg, speed_hectic)
+			_apply_anchor_wobble(wobble_hectic_amp, 3.0)
 			if _timer >= t_phase1_quiet + t_phase2_build + t_phase3_broken + t_phase4_hectic:
 				_hatch()
 		Stage.HATCHED:
 			pass
 
-	# Arrastre con clamp a pantalla
+	# Si arrastramos, seguimos el ratón con clamp a pantalla
 	if _dragging:
-		var vp: Vector2 = get_viewport_rect().size
-		var target: Vector2 = (get_viewport().get_mouse_position() - _grab_offset)
+		var vp := get_viewport_rect().size
+		var target := (get_viewport().get_mouse_position() - _grab_offset)
 		target.x = clamp(target.x, screen_margin, vp.x - screen_margin)
 		target.y = clamp(target.y, screen_margin, vp.y - screen_margin)
 		global_position = target + _drag_shake()
@@ -117,8 +119,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			if _dragging:
 				_dragging = false
 				_tween_scale(scale, _base_scale, 0.12)
-				_rest_pos = global_position    # nueva “base” tras soltar
-				rotation = 0.0                 # al soltar, recto
 
 	# Táctil
 	if event is InputEventScreenTouch:
@@ -129,32 +129,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif not event.pressed and _dragging:
 			_dragging = false
 			_tween_scale(scale, _base_scale, 0.12)
-			_rest_pos = global_position
-			rotation = 0.0
 
 # ───────── Wobble “anclado abajo”
-func _apply_wobble_anchored(amp_px: float, rot_deg: float, speed: float) -> void:
-	if _dragging:
-		return  # si estás arrastrando, no imponemos el “anclado”
-
-	var tex := texture
-	if tex == null:
-		return
-
-	var t: float = Time.get_ticks_msec() / 1000.0
-	var angle_rad: float = sin(t * TAU * (speed * 0.8)) * deg_to_rad(rot_deg)
-	var bob: float = abs(sin(t * TAU * (speed * 0.62))) * amp_px
-
-	# Longitud de centro → borde inferior (en píxeles de pantalla)
-	var half_h: float = (tex.get_size().y * 0.5) * abs(scale.y)
-
-	# Corrección de ancla: v - R(θ)*v, con v = (0, half_h)
-	var v: Vector2 = Vector2(0.0, half_h)
-	var anchor_correction: Vector2 = v - v.rotated(angle_rad)
-
-	# Posición final = base + corrección por ancla + empuje hacia arriba
-	global_position = _rest_pos + anchor_correction + Vector2(0.0, -bob)
-	rotation = angle_rad
+func _apply_anchor_wobble(amp: float, speed: float) -> void:
+	# El “ancla” está en la parte inferior del sprite (punto de apoyo)
+	# Oscilamos rotación y un pequeño offset horizontal como si “patalease” dentro.
+	var t := Time.get_ticks_msec() / 1000.0
+	var rot := sin(t * TAU * speed) * deg_to_rad(4.0) * (amp / 7.0)
+	var sway := sin(t * TAU * (speed * 0.6)) * (amp * 0.35)
+	rotation = rot
+	position.x += sway * get_process_delta_time()
 
 func _drag_shake() -> Vector2:
 	return Vector2(
@@ -162,30 +146,24 @@ func _drag_shake() -> Vector2:
 		_rng.randf_range(-drag_shake_amp, drag_shake_amp)
 	)
 
-# ───────── Transiciones de estado
 func _break_egg() -> void:
 	_next_stage(Stage.BROKEN)
 	if broken_texture:
 		texture = broken_texture
-	rotation = 0.0
 
 func _hatch() -> void:
 	_next_stage(Stage.HATCHED)
-	# Usa el mismo espacio de canvas para evitar desajustes por capas
-	var spawn_canvas_pos: Vector2 = get_global_transform_with_canvas().origin
+	_active = false
+	var spawn_pos := global_position
 	visible = false
 	rotation = 0.0
-
 	if creature_node:
-		creature_node.global_position = spawn_canvas_pos
+		creature_node.global_position = spawn_pos
 		creature_node.visible = true
-		creature_node.modulate.a = 1.0
-		creature_node.scale = Vector2.ONE
 
 func _next_stage(s: Stage) -> void:
 	_stage = s
 
-# ───────── Utilidades
 func _tween_scale(from_s: Vector2, to_s: Vector2, secs: float) -> void:
 	var tw := create_tween()
 	tw.tween_property(self, "scale", to_s, secs).from(from_s).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -193,13 +171,13 @@ func _tween_scale(from_s: Vector2, to_s: Vector2, secs: float) -> void:
 func _is_mouse_over() -> bool:
 	var tex := texture
 	if tex == null: return false
-	var local: Vector2 = to_local(get_viewport().get_mouse_position())
+	var local := to_local(get_viewport().get_mouse_position())
 	var rect := Rect2(Vector2.ZERO - tex.get_size() * 0.5, tex.get_size())
 	return rect.has_point(local)
 
 func _is_touch_over(pos: Vector2) -> bool:
 	var tex := texture
 	if tex == null: return false
-	var local: Vector2 = to_local(pos)
+	var local := to_local(pos)
 	var rect := Rect2(Vector2.ZERO - tex.get_size() * 0.5, tex.get_size())
 	return rect.has_point(local)
