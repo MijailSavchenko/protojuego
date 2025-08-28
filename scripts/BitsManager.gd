@@ -1,4 +1,3 @@
-# res://scripts/BitsManager.gd
 extends Node2D
 
 @export var bit_scene: PackedScene = preload("res://scenes/Bit.tscn")
@@ -21,13 +20,17 @@ var ritual_timer: float = 0.0
 var ritual_active: bool = false
 var ritual_completed: bool = false
 
+# Feeding mode
+var _feeding_mode: bool = false
+var _predator: Node2D = null
+
 @onready var flash_overlay: CanvasLayer = get_tree().current_scene.get_node_or_null("FlashOverlay")
 @onready var egg: Sprite2D = get_tree().current_scene.get_node_or_null("Egg")
 
 func _ready() -> void:
 	print("BitsManager listo. Tap para crear bits (tope %d)." % max_bits)
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	var mouse_pos: Vector2 = get_viewport().get_mouse_position()
 	if mouse_pos != Vector2.ZERO:
 		pointer_pos = mouse_pos
@@ -41,10 +44,14 @@ func _process(delta: float) -> void:
 	for b in bits:
 		if is_instance_valid(b):
 			b.set_pointer_state(pointer_pressed, pointer_pos)
+			if _feeding_mode and b.has_method("set_predator"):
+				b.call("set_predator", _predator)
+			elif not _feeding_mode and b.has_method("clear_predator"):
+				b.call("clear_predator")
 
 	prev_pressed = pointer_pressed
 
-	if ritual_completed or spawning_locked:
+	if ritual_completed or spawning_locked or _feeding_mode:
 		return
 
 	if pointer_pressed and bits.size() == max_bits:
@@ -52,7 +59,7 @@ func _process(delta: float) -> void:
 		var orbiting_count: int = _count_orbiting()
 
 		if orbiting_count >= needed:
-			ritual_timer += delta
+			ritual_timer += _delta
 			if not ritual_active and ritual_timer >= 0.4:
 				ritual_active = true
 				for b in bits:
@@ -85,9 +92,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		pointer_pos = event.position
 
 func _on_tap() -> void:
-	if spawning_locked or ritual_completed:
+	# 1) Si NO estamos en feeding y el huevo está visible → NO spawnear bits.
+	if (not _feeding_mode) and egg and egg.visible:
 		return
 
+	# 2) Spawnear bit (en feeding o libre)
 	if bits.size() >= max_bits:
 		var oldest = fifo.pop_front()
 		if is_instance_valid(oldest):
@@ -100,6 +109,8 @@ func _on_tap() -> void:
 
 	bits.append(inst)
 	fifo.append(inst)
+
+	# 3) Si no feeding: no forzar ritual aquí; el resto de lógica va en _process()
 
 func _random_spawn_position() -> Vector2:
 	var vp: Vector2 = get_viewport_rect().size
@@ -125,9 +136,7 @@ func _start_ritual_sequence() -> void:
 		if is_instance_valid(b) and b.has_method("start_merge"):
 			b.start_merge(pointer_pos)
 
-	# Posicionar el huevo JUSTO donde quedó el dedo
 	if egg:
-		# Si el nodo tiene script con start_lifecycle, úsalo (lo tiene)
 		if egg.has_method("start_lifecycle"):
 			egg.call("start_lifecycle", pointer_pos)
 		else:
@@ -169,3 +178,28 @@ func _calc_majority_color() -> Color:
 		"AIRE": Color8(228, 249, 255)
 	}
 	return type_color.get(best_type, Color.WHITE)
+
+# ─────────── Helpers para Creature
+func get_bits() -> Array:
+	return bits
+
+func remove_bit(node: Node2D) -> void:
+	if node in bits:
+		bits.erase(node)
+	if node in fifo:
+		fifo.erase(node)
+	if is_instance_valid(node):
+		node.queue_free()
+
+func set_feeding_mode(active: bool, creature: Node2D = null) -> void:
+	_feeding_mode = active
+	_predator = creature
+	for b in bits:
+		if not is_instance_valid(b): continue
+		if active and b.has_method("set_predator"):
+			b.call("set_predator", creature)
+		elif (not active) and b.has_method("clear_predator"):
+			b.call("clear_predator")
+
+func is_feeding_mode() -> bool:
+	return _feeding_mode

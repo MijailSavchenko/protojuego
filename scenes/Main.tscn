@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://b7gackwwhgqxy"]
+[gd_scene load_steps=12 format=3 uid="uid://b7gackwwhgqxy"]
 
 [ext_resource type="Script" uid="uid://dceseljjdd3xl" path="res://scripts/Main.gd" id="1_rarhs"]
 [ext_resource type="Texture2D" uid="uid://bx4l4oqk2g4bk" path="res://assets/sprites/eggs/xeno/egg_xeno.png" id="1_rvslj"]
@@ -7,6 +7,9 @@
 [ext_resource type="Script" uid="uid://0kp17xvd344w" path="res://scripts/Egg.gd" id="3_nxtc6"]
 [ext_resource type="Texture2D" uid="uid://dkv5m6mb11fnt" path="res://assets/sprites/eggs/xeno/egg_xeno_broken.png" id="4_jlsqs"]
 [ext_resource type="Script" uid="uid://d1p3lt6g22xt4" path="res://scripts/BitsManager.gd" id="4_vcsgt"]
+[ext_resource type="Script" uid="uid://cxqfuoo6a84dm" path="res://scripts/Creature.gd" id="6_jlsqs"]
+[ext_resource type="Texture2D" uid="uid://debyw082trd32" path="res://assets/sprites/creatures/xeno/xeno_back.png" id="7_lhr70"]
+[ext_resource type="Texture2D" uid="uid://dewro4lqo40go" path="res://assets/sprites/creatures/xeno/xeno_front_diag.png" id="8_wp0k4"]
 
 [sub_resource type="Environment" id="Environment_0bbpv"]
 background_mode = 1
@@ -29,6 +32,7 @@ texture = ExtResource("1_rvslj")
 script = ExtResource("3_nxtc6")
 broken_texture = ExtResource("4_jlsqs")
 wobble_hectic_amp = 10.0
+creature_path = NodePath("../Creature")
 
 [node name="CrackFX" type="GPUParticles2D" parent="Egg"]
 emitting = false
@@ -36,6 +40,11 @@ emitting = false
 [node name="Creature" type="Sprite2D" parent="."]
 visible = false
 texture = ExtResource("2_0bbpv")
+script = ExtResource("6_jlsqs")
+tex_front = ExtResource("2_0bbpv")
+tex_back = ExtResource("7_lhr70")
+tex_front_diag = ExtResource("8_wp0k4")
+bits_manager_path = NodePath("../BitsLayer/BitsManager")
 
 [node name="BitsLayer" type="Node2D" parent="."]
 

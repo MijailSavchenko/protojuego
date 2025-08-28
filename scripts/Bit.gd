@@ -25,14 +25,14 @@ const WHITE := Color8(255, 255, 255)
 @export var color_blend_time: float = 1.25
 @export var type_cycle_seconds: float = 3.0
 
-# ───── Movimiento global (ligero boost)
+# ───── Movimiento global
 @export var base_speed: float = 90.0
 @export var max_speed: float = 170.0
 @export var bounce_damping: float = 1.0
 @export var drift_speed: float = 70.0
 @export var drift_turn_speed: float = 0.30
 
-# ───── Interacción (acercamiento/orbita) — órbita más ágil
+# ───── Interacción (acercamiento/orbita)
 @export var attract_radius: float = 60.0
 @export var stand_off_radius: float = 22.0
 @export var approach_lerp: float = 14.0
@@ -40,18 +40,23 @@ const WHITE := Color8(255, 255, 255)
 @export var spawn_grace_time: float = 0.4
 @export var scatter_duration: float = 1.0
 
-# ───── Órbita estable — velocidad angular subida
+# ───── Órbita estable
 @export var approach_ang_speed_min: float = 3.8
 @export var approach_ang_speed_max: float = 6.8
 @export var approach_radius_jitter: float = 0.18
 @export var min_move_speed: float = 40.0
 @export var center_follow: float = 0.60
 
-# ───── Anti‑bordes suave
+# ───── Anti-bordes suave
 @export var wall_margin: float = 36.0
 @export var wall_repulsion: float = 220.0
 @export var wall_tangent: float = 140.0
 @export var wall_steer_blend: float = 0.55
+
+# ───── Huida del depredador (Creature) durante feeding
+@export var flee_radius: float = 110.0
+@export var flee_boost: float = 220.0
+var _predator: Node2D = null
 
 # ───── Nodos/estado
 var core: Sprite2D
@@ -283,9 +288,16 @@ func _update_idle(delta: float) -> void:
 				var aa: float = _t * 1.3
 				type_vel = Vector2(cos(aa), sin(aa)) * (base_speed * 0.8)
 
-	# Anti‑bordes (steering suave mezclado con la deriva)
+	# Anti-bordes (steering suave mezclado con la deriva)
 	var steer: Vector2 = _wall_steer()
 	var target: Vector2 = (drift_vel + type_vel).lerp(steer, wall_steer_blend)
+
+	# Huida de depredador (solo si hay y dentro del radio)
+	if _predator and is_instance_valid(_predator):
+		var d := global_position.distance_to(_predator.global_position)
+		if d <= flee_radius:
+			var away := (global_position - _predator.global_position).normalized() * flee_boost
+			target += away
 
 	vel = vel.move_toward(target, 75.0 * delta)
 	_move_and_rebound(delta)
@@ -305,7 +317,6 @@ func _wall_steer() -> Vector2:
 	if near_top: steer.y += wall_repulsion
 	if near_bottom: steer.y -= wall_repulsion
 
-	# Tangencial para que “deslice” y no se quede pegado
 	if near_left or near_right:
 		var vy := 1.0 if vel.y == 0.0 else vel.y
 		steer.y += sign(vy) * wall_tangent
@@ -390,3 +401,10 @@ func _random_dir() -> Vector2:
 # ───────── Integración con BitsManager (conteo por tipo)
 func get_type_id() -> String:
 	return current_type
+
+# ───────── Depredador (Creature)
+func set_predator(p: Node2D) -> void:
+	_predator = p
+
+func clear_predator() -> void:
+	_predator = null
