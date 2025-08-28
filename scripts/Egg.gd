@@ -127,6 +127,14 @@ func _next_stage(s: Stage) -> void:
 	_stage = s
 
 func _unhandled_input(event: InputEvent) -> void:
+	# F1: fuerza eclosión SIEMPRE (útil para test rápido)
+	if event is InputEventKey and event.pressed and event.keycode == KEY_F1:
+		if not _active:
+			start_lifecycle(get_viewport().get_mouse_position())
+		_hatch()
+		return
+
+	# Ratón
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			if _is_mouse_over():
@@ -138,6 +146,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				_dragging = false
 				_tween_scale(scale, _base_scale, 0.12)
 
+	# Táctil
 	if event is InputEventScreenTouch:
 		if event.pressed and _is_touch_over(event.position):
 			_dragging = true

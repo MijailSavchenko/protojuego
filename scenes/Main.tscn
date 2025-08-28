@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3 uid="uid://b7gackwwhgqxy"]
+[gd_scene load_steps=13 format=3 uid="uid://b7gackwwhgqxy"]
 
 [ext_resource type="Script" uid="uid://dceseljjdd3xl" path="res://scripts/Main.gd" id="1_rarhs"]
 [ext_resource type="Texture2D" uid="uid://bx4l4oqk2g4bk" path="res://assets/sprites/eggs/xeno/egg_xeno.png" id="1_rvslj"]
@@ -10,6 +10,7 @@
 [ext_resource type="Script" uid="uid://cxqfuoo6a84dm" path="res://scripts/Creature.gd" id="6_jlsqs"]
 [ext_resource type="Texture2D" uid="uid://debyw082trd32" path="res://assets/sprites/creatures/xeno/xeno_back.png" id="7_lhr70"]
 [ext_resource type="Texture2D" uid="uid://dewro4lqo40go" path="res://assets/sprites/creatures/xeno/xeno_front_diag.png" id="8_wp0k4"]
+[ext_resource type="PackedScene" uid="uid://bm7w4iktpqgpp" path="res://scenes/Poop.tscn" id="9_wp0k4"]
 
 [sub_resource type="Environment" id="Environment_0bbpv"]
 background_mode = 1
@@ -18,6 +19,7 @@ background_mode = 1
 script = ExtResource("1_rarhs")
 
 [node name="Background" type="ColorRect" parent="."]
+z_index = -100
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -25,6 +27,23 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 color = Color(0, 0, 0, 1)
+
+[node name="WorldEnv" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_0bbpv")
+
+[node name="BitsLayer" type="Node2D" parent="."]
+
+[node name="BitsManager" type="Control" parent="BitsLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+script = ExtResource("4_vcsgt")
 
 [node name="Egg" type="Sprite2D" parent="."]
 position = Vector2(360, 640)
@@ -44,14 +63,26 @@ script = ExtResource("6_jlsqs")
 tex_front = ExtResource("2_0bbpv")
 tex_back = ExtResource("7_lhr70")
 tex_front_diag = ExtResource("8_wp0k4")
+eat_radius = 42.0
+eat_pickup_radius = 42.0
 bits_manager_path = NodePath("../BitsLayer/BitsManager")
+poop_scene = ExtResource("9_wp0k4")
 
-[node name="BitsLayer" type="Node2D" parent="."]
+[node name="FlashOverlay" type="CanvasLayer" parent="."]
+script = ExtResource("3_0bbpv")
 
-[node name="BitsManager" type="Node2D" parent="BitsLayer"]
-script = ExtResource("4_vcsgt")
+[node name="Flash" type="ColorRect" parent="FlashOverlay"]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 
-[node name="InputCanvas" type="Node2D" parent="."]
+[node name="InputCanvas" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 0
+mouse_filter = 2
 
 [node name="Stroke" type="Line2D" parent="InputCanvas"]
 width = 6.0
@@ -67,20 +98,6 @@ autostart = true
 offset_right = 40.0
 offset_bottom = 23.0
 text = "Estado: Egg"
-
-[node name="FlashOverlay" type="CanvasLayer" parent="."]
-script = ExtResource("3_0bbpv")
-
-[node name="Flash" type="ColorRect" parent="FlashOverlay"]
-visible = false
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="WorldEnv" type="WorldEnvironment" parent="."]
-environment = SubResource("Environment_0bbpv")
 
 [node name="TapCatcher" type="Control" parent="."]
 layout_mode = 3

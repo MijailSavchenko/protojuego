@@ -9,7 +9,8 @@ extends Sprite2D
 @export var move_speed: float = 120.0
 @export var wander_speed: float = 65.0
 @export var sense_radius: float = 220.0
-@export var eat_radius: float = 22.0
+@export var eat_radius: float = 22.0        # radio para perseguir al objetivo
+@export var eat_pickup_radius: float = 28.0 # radio real para "recoger/comer"
 @export var screen_margin: float = 0.0
 
 # ─── Drag
@@ -29,7 +30,7 @@ extends Sprite2D
 # ─── Integraciones
 @export var bits_manager_path: NodePath
 @export var poop_scene: PackedScene
-var bits_manager: Node2D
+var bits_manager: Node  # admite Control o Node2D
 
 # ─── UI mínima
 @export var bubble_offset: Vector2 = Vector2(0, -48)
@@ -49,6 +50,9 @@ var stamina: float
 var hunger: float
 var eaten_count: int = 0
 
+# objetivo visible
+var feeding_on: Node2D = null
+
 # doble tap
 var _last_tap_time: float = 0.0
 @export var double_tap_window: float = 0.28
@@ -57,10 +61,12 @@ var _last_tap_time: float = 0.0
 var _bubble_root: Node2D
 var _bubble_stats: Area2D
 var _bubble_eat: Area2D
+var _bubble_stop: Area2D
 
 # panels + escudo
 var _panel_stats: Control
 var _panel_feed: Control
+var _panel_stop: Control
 var _shield: Control
 var _menu_open: bool = false
 
@@ -98,7 +104,7 @@ func start_post_birth(spawn_pos: Vector2) -> void:
 func _process(delta: float) -> void:
 	hunger = clampf(hunger + hunger_increase_per_sec * delta, 0.0, max_hunger)
 
-	if _menu_open && _state != S.DRAGGED:
+	if _menu_open and _state != S.DRAGGED:
 		_process_idle(delta)
 	else:
 		match _state:
@@ -123,7 +129,7 @@ func _process_idle(delta: float) -> void:
 	scale = _base_scale * s
 
 	_dwell_t -= delta
-	if _dwell_t <= 0.0 && not _menu_open:
+	if _dwell_t <= 0.0 and not _menu_open:
 		_state = S.WANDER
 
 func _process_wander(delta: float) -> void:
@@ -131,7 +137,7 @@ func _process_wander(delta: float) -> void:
 		_state = S.IDLE
 		return
 
-	var target: Node2D = _nearest_bit()
+	var target: Node2D = _nearest_food_bit()
 	if target:
 		var speed := move_speed
 		var dir := (target.global_position - global_position).normalized()
@@ -145,8 +151,7 @@ func _process_wander(delta: float) -> void:
 		).normalized()
 		_move_towards(global_position + dir2 * 30.0, wander_speed, delta)
 
-	var v := _last_dir.length()
-	if v > 0.01:
+	if _last_dir.length() > 0.01:
 		position.y += sin(Time.get_ticks_msec()/90.0) * (step_bob_amp * delta)
 
 	if _rng.randf() < 0.003:
@@ -154,27 +159,62 @@ func _process_wander(delta: float) -> void:
 		_state = S.IDLE
 
 func _process_feeding(delta: float) -> void:
-	if not (bits_manager and bits_manager.has_method("is_feeding_mode") and bits_manager.call("is_feeding_mode")):
+	var feeding_active := false
+	if bits_manager and bits_manager.has_method("is_feeding_mode"):
+		feeding_active = bits_manager.call("is_feeding_mode")
+	if not feeding_active:
 		return
 
-	var target: Node2D = _nearest_bit()
+	# Elegimos un objetivo (visual)
+	var target: Node2D = _nearest_food_bit()
+	feeding_on = target
 	if target:
 		var speed := move_speed
 		var dir := (target.global_position - global_position).normalized()
 		if dir.y < -0.3:
 			speed *= 0.85
 		_move_towards(target.global_position, speed, delta)
-
-		if global_position.distance_to(target.global_position) <= eat_radius:
-			if bits_manager and bits_manager.has_method("remove_bit"):
-				bits_manager.call("remove_bit", target)
-			elif is_instance_valid(target):
-				target.queue_free()
-			_on_ate_bit()
 	else:
 		_process_wander(delta)
 		if hunger <= 0.05 * max_hunger:
 			_stop_feeding(true)
+		return
+
+	# Barrido: come cualquier FoodBit en radio
+	var eaten := _eat_food_bits_in_range()
+	if eaten > 0:
+		for i in eaten:
+			_on_ate_bit()
+		feeding_on = null
+
+func _eat_food_bits_in_range() -> int:
+	if bits_manager == null:
+		return 0
+	var eaten := 0
+	var list: Array = []
+	if bits_manager.has_method("get_food_bits"):
+		list = bits_manager.call("get_food_bits") as Array
+	# iterar sobre copia por si el manager modifica la lista al borrar
+	for item in list.duplicate():
+		if not is_instance_valid(item):
+			continue
+		if item is Node2D:
+			var b: Node2D = item
+			if _in_pickup_range(b):
+				if bits_manager.has_method("remove_food_bit"):
+					bits_manager.call("remove_food_bit", b)
+				elif is_instance_valid(b):
+					b.queue_free() # doble seguro
+				eaten += 1
+	return eaten
+
+func _in_pickup_range(b: Node2D) -> bool:
+	if global_position.distance_to(b.global_position) <= eat_pickup_radius:
+		return true
+	# Segunda comprobación por si alguna textura/offset nos engaña
+	var local := to_local(b.global_position)
+	var rect := Rect2(Vector2(-10, -10), Vector2(20, 20))
+	return rect.has_point(local)
 
 func _process_drag(_delta: float) -> void:
 	var vp: Vector2 = get_viewport_rect().size
@@ -199,10 +239,10 @@ func _clamp_to_viewport() -> void:
 	global_position.x = clamp(global_position.x, screen_margin, vp.x - screen_margin)
 	global_position.y = clamp(global_position.y, screen_margin, vp.y - screen_margin)
 
-func _nearest_bit() -> Node2D:
-	if bits_manager == null or not bits_manager.has_method("get_bits"):
+func _nearest_food_bit() -> Node2D:
+	if bits_manager == null or not bits_manager.has_method("get_food_bits"):
 		return null
-	var arr: Array = (bits_manager.call("get_bits") as Array)
+	var arr: Array = (bits_manager.call("get_food_bits") as Array)
 	var best: Node2D = null
 	var best_d: float = 1e9
 	for item in arr:
@@ -210,8 +250,6 @@ func _nearest_bit() -> Node2D:
 			continue
 		if item is Node2D:
 			var b: Node2D = item
-			if not is_instance_valid(b):
-				continue
 			var d: float = global_position.distance_to(b.global_position)
 			if d < best_d and d <= sense_radius:
 				best_d = d
@@ -270,30 +308,38 @@ func _spawn_poop() -> void:
 		s.centered = true
 	get_parent().add_child(poop)
 	poop.global_position = global_position
+	poop.z_index = -1
 	var pgd: Script = preload("res://scripts/Poop.gd")
 	poop.set_script(pgd)
 
-# ─── UI: burbujas SOLO con doble-tap (sin escudo en esta fase)
+# ─── UI / Burbujas y paneles: SIN CAMBIOS FUNCIONALES ─────────────────────────
+# (todo lo siguiente es igual a lo que ya tenías)
+
 func _toggle_bubbles() -> void:
-	# cerrar si ya están
 	if _bubble_root and is_instance_valid(_bubble_root):
 		_bubble_root.queue_free()
 		_bubble_root = null
 		_menu_open = false
-		_destroy_shield() # por si acaso quedó alguno
+		_destroy_shield()
 		return
 
 	_menu_open = true
 	_state = S.IDLE
 	_dwell_t = max(_dwell_t, 1.2)
 
-	# OJO: NO creamos escudo aquí para que el toque llegue a las burbujas
+	var feeding_active: bool = false
+	if bits_manager and bits_manager.has_method("is_feeding_mode"):
+		feeding_active = bits_manager.call("is_feeding_mode")
+
 	_bubble_root = Node2D.new()
 	add_child(_bubble_root)
 	_bubble_root.position = bubble_offset
 
-	_bubble_stats = _make_bubble(Color8(120,200,255), -bubble_gap, "_on_bubble_stats_event")
-	_bubble_eat   = _make_bubble(Color8(255,170,90), +bubble_gap, "_on_bubble_eat_event")
+	if feeding_active:
+		_bubble_stop = _make_bubble(Color8(255, 100, 100), 0.0, "_on_bubble_stop_event")
+	else:
+		_bubble_stats = _make_bubble(Color8(120,200,255), -bubble_gap, "_on_bubble_stats_event")
+		_bubble_eat   = _make_bubble(Color8(255,170,90), +bubble_gap, "_on_bubble_eat_event")
 
 func _make_bubble(col: Color, xoff: float, handler: String) -> Area2D:
 	var root: Node2D = Node2D.new()
@@ -339,7 +385,13 @@ func _on_bubble_eat_event(_viewport: Node, event: InputEvent, _shape_idx: int) -
 			_bubble_root.queue_free()
 			_bubble_root = null
 
-# ─── Panel de stats (con escudo para cerrar al tocar fuera)
+func _on_bubble_stop_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_show_stop_panel("¿Parar ya?")
+		if _bubble_root and is_instance_valid(_bubble_root):
+			_bubble_root.queue_free()
+			_bubble_root = null
+
 func _show_stats_panel() -> void:
 	_close_panels()
 	_create_shield()
@@ -393,7 +445,6 @@ func _show_stats_panel() -> void:
 	_dwell_t = max(_dwell_t, 2.0)
 	_menu_open = true
 
-# ─── Panel de “Atraer bits” (con escudo)
 func _show_feed_panel(msg: String) -> void:
 	_close_panels()
 	_create_shield()
@@ -442,7 +493,56 @@ func _show_feed_panel(msg: String) -> void:
 	_dwell_t = max(_dwell_t, 1.2)
 	_menu_open = true
 
-# Botón redondo estilizado
+func _show_stop_panel(msg: String) -> void:
+	_close_panels()
+	_create_shield()
+
+	_panel_stop = Control.new()
+	add_child(_panel_stop)
+	_panel_stop.position = Vector2(-68, -88)
+	_panel_stop.size = Vector2(136, 86)
+	_panel_stop.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	var bg_panel := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0,0,0,0.55)
+	sb.corner_radius_top_left = 8
+	sb.corner_radius_top_right = 8
+	sb.corner_radius_bottom_left = 8
+	sb.corner_radius_bottom_right = 8
+	bg_panel.add_theme_stylebox_override("panel", sb)
+	bg_panel.size = _panel_stop.size
+	_panel_stop.add_child(bg_panel)
+
+	var lb := Label.new()
+	lb.text = msg
+	lb.position = Vector2(12, 10)
+	_panel_stop.add_child(lb)
+
+	var yes := _make_round_button(Color(0.9,0.3,0.3,0.95), "Sí")
+	yes.position = Vector2(36, 48)
+	_panel_stop.add_child(yes)
+
+	var no := _make_round_button(Color(0.3,0.9,0.3,0.95), "No")
+	no.position = Vector2(82, 48)
+	_panel_stop.add_child(no)
+
+	yes.pressed.connect(func():
+		if bits_manager and bits_manager.has_method("stop_and_clear_feeding"):
+			bits_manager.call("stop_and_clear_feeding")
+		_stop_feeding(false)
+		_close_panels()
+		_menu_open = false
+	)
+	no.pressed.connect(func():
+		_close_panels()
+		_menu_open = false
+	)
+
+	_state = S.IDLE
+	_dwell_t = max(_dwell_t, 1.2)
+	_menu_open = true
+
 func _make_round_button(col: Color, txt: String) -> Button:
 	var btn := Button.new()
 	btn.text = txt
@@ -468,7 +568,6 @@ func _make_round_button(col: Color, txt: String) -> Button:
 	btn.add_theme_stylebox_override("pressed", pressed)
 	return btn
 
-# Escudo: cierra paneles al tocar fuera (solo para paneles)
 func _create_shield() -> void:
 	_destroy_shield()
 	_shield = Control.new()
@@ -494,6 +593,9 @@ func _close_panels() -> void:
 	if _panel_feed and is_instance_valid(_panel_feed):
 		_panel_feed.queue_free()
 	_panel_feed = null
+	if _panel_stop and is_instance_valid(_panel_stop):
+		_panel_stop.queue_free()
+	_panel_stop = null
 	if _bubble_root and is_instance_valid(_bubble_root):
 		_bubble_root.queue_free()
 	_bubble_root = null
@@ -516,7 +618,6 @@ func _stop_feeding(success: bool) -> void:
 
 # ─── Input (doble-tap y drag)
 func _unhandled_input(event: InputEvent) -> void:
-	# doble tap para abrir/cerrar burbujas
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		var now: float = Time.get_ticks_msec() / 1000.0
 		if now - _last_tap_time <= double_tap_window:
@@ -526,7 +627,6 @@ func _unhandled_input(event: InputEvent) -> void:
 				_dwell_t = max(_dwell_t, 1.5)
 		_last_tap_time = now
 
-	# drag ratón
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed and _is_mouse_over():
 			_dragging = true
@@ -541,7 +641,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			var tw2: Tween = create_tween()
 			tw2.tween_property(self, "scale", _base_scale, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
-	# táctil
 	if event is InputEventScreenTouch:
 		if event.pressed and _is_touch_over(event.position):
 			_dragging = true

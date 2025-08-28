@@ -18,6 +18,7 @@ const WHITE := Color8(255, 255, 255)
 @export var fade_in_time: float = 2.0
 @export var halo_size_px: int = 24
 @export var halo_alpha: float = 0.35
+@export var use_halo: bool = false   # <<— por defecto NO halo
 
 # ───── Ciclo / color
 @export var idle_to_cycle_delay: float = 5.0
@@ -53,14 +54,14 @@ const WHITE := Color8(255, 255, 255)
 @export var wall_tangent: float = 140.0
 @export var wall_steer_blend: float = 0.55
 
-# ───── Huida del depredador (Creature) durante feeding
+# ───── (predator desactivado: dejamos las variables por compatibilidad)
 @export var flee_radius: float = 110.0
 @export var flee_boost: float = 220.0
 var _predator: Node2D = null
 
 # ───── Nodos/estado
 var core: Sprite2D
-var halo: Sprite2D
+var halo: Sprite2D = null
 var state: State = State.IDLE
 var current_type: String = "AGUA"
 var _type_t: float = 0.0
@@ -116,8 +117,9 @@ func _ready() -> void:
 
 	var tw: Tween = create_tween()
 	tw.tween_property(core, "modulate:a", 1.0, fade_in_time).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	var tw2: Tween = create_tween()
-	tw2.tween_property(halo, "modulate:a", halo_alpha, fade_in_time).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	if use_halo and halo:
+		var tw2: Tween = create_tween()
+		tw2.tween_property(halo, "modulate:a", halo_alpha, fade_in_time).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 func _make_visuals() -> void:
 	core = Sprite2D.new()
@@ -128,24 +130,25 @@ func _make_visuals() -> void:
 	core.texture = ImageTexture.create_from_image(img)
 	core.scale = Vector2(pixel_scale, pixel_scale)
 	core.modulate = Color(1,1,1,0)
-
-	halo = Sprite2D.new()
-	halo.name = "Halo"
-	add_child(halo)
-	var size: int = max(8, halo_size_px)
-	var img2: Image = Image.create(size, size, false, Image.FORMAT_RGBA8)
-	for y in size:
-		for x in size:
-			var dx: float = float(x) - float(size) * 0.5 + 0.5
-			var dy: float = float(y) - float(size) * 0.5 + 0.5
-			var r: float = sqrt(dx*dx + dy*dy) / (float(size) * 0.5)
-			var a: float = clamp(1.0 - r, 0.0, 1.0)
-			img2.set_pixel(x, y, Color(1,1,1,a))
-	halo.texture = ImageTexture.create_from_image(img2)
-	halo.scale = Vector2(pixel_scale * 4.0, pixel_scale * 4.0)
-	halo.modulate = Color(1,1,1,0.0)
-	halo.z_index = -1
 	core.z_index = 0
+
+	if use_halo:
+		halo = Sprite2D.new()
+		halo.name = "Halo"
+		add_child(halo)
+		var size: int = max(8, halo_size_px)
+		var img2: Image = Image.create(size, size, false, Image.FORMAT_RGBA8)
+		for y in size:
+			for x in size:
+				var dx: float = float(x) - float(size) * 0.5 + 0.5
+				var dy: float = float(y) - float(size) * 0.5 + 0.5
+				var r: float = sqrt(dx*dx + dy*dy) / (float(size) * 0.5)
+				var a: float = clamp(1.0 - r, 0.0, 1.0)
+				img2.set_pixel(x, y, Color(1,1,1,a))
+		halo.texture = ImageTexture.create_from_image(img2)
+		halo.scale = Vector2(pixel_scale * 4.0, pixel_scale * 4.0)
+		halo.modulate = Color(1,1,1,0.0)
+		halo.z_index = -1
 
 func set_pointer_state(pressed: bool, pos: Vector2) -> void:
 	pointer_pressed = pressed
@@ -190,7 +193,8 @@ func _update_color_logic(delta: float) -> void:
 	if white_mode:
 		var a: float = lerp(flicker_min_a, flicker_max_a, 0.5 + 0.5 * sin(_t * TAU * flicker_speed))
 		core.modulate = Color(1, 1, 1, a)
-		halo.modulate = Color(halo.modulate.r, halo.modulate.g, halo.modulate.b, a * 0.25)
+		if use_halo and halo:
+			halo.modulate = Color(halo.modulate.r, halo.modulate.g, halo.modulate.b, a * 0.25)
 
 	if not pointer_pressed and time_since_interaction >= revert_to_white_time:
 		white_mode = true
@@ -200,7 +204,8 @@ func _update_color_logic(delta: float) -> void:
 		blend_t = 1.0
 		current_type = "AGUA"
 		core.modulate = WHITE
-		halo.modulate = Color(1,1,1,halo_alpha)
+		if use_halo and halo:
+			halo.modulate = Color(1,1,1,halo_alpha)
 
 	if not color_locked and not white_mode and time_since_interaction >= idle_to_cycle_delay:
 		_type_t += delta
@@ -229,30 +234,33 @@ func _current_color_rgb() -> Color:
 
 func _apply_color(c: Color) -> void:
 	core.modulate = Color(c.r, c.g, c.b, core.modulate.a)
-	halo.modulate = Color(c.r, c.g, c.b, halo_alpha)
+	if use_halo and halo:
+		halo.modulate = Color(c.r, c.g, c.b, halo_alpha)
 
 # Latido visual para el ritual (usado por BitsManager)
 func start_shine(intensity: float = 1.25, duration: float = 0.35) -> void:
-	if core == null or halo == null:
+	if core == null:
 		return
 	var s0: Vector2 = core.scale
-	var a0: float = halo.modulate.a
 	var tw1: Tween = create_tween()
 	tw1.tween_property(core, "scale", s0 * intensity, duration * 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	tw1.tween_property(core, "scale", s0, duration * 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	var target_a: float = clamp(a0 + 0.25, 0.0, 1.0)
-	var tw2: Tween = create_tween()
-	tw2.tween_property(halo, "modulate:a", target_a, duration * 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	tw2.tween_property(halo, "modulate:a", a0, duration * 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	if use_halo and halo:
+		var a0: float = halo.modulate.a
+		var target_a: float = clamp(a0 + 0.25, 0.0, 1.0)
+		var tw2: Tween = create_tween()
+		tw2.tween_property(halo, "modulate:a", target_a, duration * 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tw2.tween_property(halo, "modulate:a", a0, duration * 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
 # ───────── Merge (llamado por el manager durante el ritual)
 func start_merge(target: Vector2) -> void:
 	merging = true
 	merge_target = target
 	state = State.MERGE
-	var a0: float = halo.modulate.a
-	var tw := create_tween()
-	tw.tween_property(halo, "modulate:a", clamp(a0 + 0.2, 0.0, 1.0), 0.15).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	if use_halo and halo:
+		var a0: float = halo.modulate.a
+		var tw := create_tween()
+		tw.tween_property(halo, "modulate:a", clamp(a0 + 0.2, 0.0, 1.0), 0.15).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 func _update_merge(delta: float) -> void:
 	var to_t: Vector2 = merge_target - global_position
@@ -288,16 +296,11 @@ func _update_idle(delta: float) -> void:
 				var aa: float = _t * 1.3
 				type_vel = Vector2(cos(aa), sin(aa)) * (base_speed * 0.8)
 
-	# Anti-bordes (steering suave mezclado con la deriva)
 	var steer: Vector2 = _wall_steer()
 	var target: Vector2 = (drift_vel + type_vel).lerp(steer, wall_steer_blend)
 
-	# Huida de depredador (solo si hay y dentro del radio)
-	if _predator and is_instance_valid(_predator):
-		var d := global_position.distance_to(_predator.global_position)
-		if d <= flee_radius:
-			var away := (global_position - _predator.global_position).normalized() * flee_boost
-			target += away
+	# IMPORTANTE: no hacemos “flee del depredador” para facilitar que la criatura coma
+	# (dejamos el código y variables para compatibilidad, pero no se usa)
 
 	vel = vel.move_toward(target, 75.0 * delta)
 	_move_and_rebound(delta)
@@ -402,9 +405,8 @@ func _random_dir() -> Vector2:
 func get_type_id() -> String:
 	return current_type
 
-# ───────── Depredador (Creature)
+# ───────── Depredador (no usado)
 func set_predator(p: Node2D) -> void:
 	_predator = p
-
 func clear_predator() -> void:
 	_predator = null

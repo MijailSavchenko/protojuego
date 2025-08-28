@@ -1,6 +1,5 @@
 extends Node2D
 
-# Toques necesarios para limpiar
 @export var taps_to_clean: int = 2
 @export var fade_time: float = 0.15
 
@@ -17,6 +16,6 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _is_mouse_over() -> bool:
 	var local: Vector2 = to_local(get_viewport().get_mouse_position())
-	# AABB generosa de 16x16 centrada
-	var rect := Rect2(Vector2(-8,-8), Vector2(16,16))
+	# caja generosa 16×16 centrada para que sea fácil acertar
+	var rect := Rect2(Vector2(-8, -8), Vector2(16, 16))
 	return rect.has_point(local)
