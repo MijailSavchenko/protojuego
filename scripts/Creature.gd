@@ -1,23 +1,30 @@
 extends Sprite2D
 
-# ─── Texturas de Xeno
-@export var tex_front: Texture2D
-@export var tex_back: Texture2D
-@export var tex_front_diag: Texture2D
+# ───────────────── Sprites (una especie)
+@export var tex_front1: Texture2D
+@export var tex_front2: Texture2D
+@export var tex_back1:  Texture2D
+@export var tex_back2:  Texture2D
+@export var tex_did:    Texture2D   # diagonal inferior derecha
+@export var tex_dii:    Texture2D   # diagonal inferior izquierda
+@export var tex_dsd:    Texture2D   # diagonal superior derecha
+@export var tex_dsi:    Texture2D   # diagonal superior izquierda
+@export var tex_blink1: Texture2D   # cierre sobre front2
+@export var tex_blink2: Texture2D   # cierre sobre front1
 
-# ─── Movimiento y detección
+# ───────────────── Movimiento y detección
 @export var move_speed: float = 120.0
 @export var wander_speed: float = 65.0
 @export var sense_radius: float = 220.0
-@export var eat_radius: float = 22.0        # radio para perseguir al objetivo
-@export var eat_pickup_radius: float = 28.0 # radio real para "recoger/comer"
+@export var eat_radius: float = 22.0
+@export var eat_pickup_radius: float = 28.0
 @export var screen_margin: float = 0.0
 
-# ─── Drag
+# ───────────────── Drag (arrastre)
 @export var drag_scale: float = 1.15
 @export var drag_shake_amp: float = 2.0
 
-# ─── Stats
+# ───────────────── Stats
 @export var max_stamina: float = 100.0
 @export var max_hunger: float = 100.0
 @export var hunger_increase_per_sec: float = 2.0
@@ -27,25 +34,25 @@ extends Sprite2D
 @export var poop_every_n_bits: int = 3
 @export var stamina_gain_per_bit: float = 6.0
 
-# ─── Integraciones
+# ───────────────── Integraciones
 @export var bits_manager_path: NodePath
 @export var poop_scene: PackedScene
-var bits_manager: Node  # admite Control o Node2D
+var bits_manager: Node = null          # admite Control o Node2D
 
-# ─── UI mínima
+# ───────────────── UI mínima (burbujas)
 @export var bubble_offset: Vector2 = Vector2(0, -48)
 @export var bubble_gap: float = 28.0
 @export var bubble_scale: float = 0.9
 
-# ─── Estados
+# ───────────────── Estados
 enum S { IDLE, WANDER, FEEDING, DRAGGED }
 var _state: S = S.IDLE
 var _dragging: bool = false
 var _grab_offset: Vector2 = Vector2.ZERO
 var _base_scale: Vector2 = Vector2.ONE
-var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
+var _rng := RandomNumberGenerator.new()
 
-# stats
+# stats actuales
 var stamina: float
 var hunger: float
 var eaten_count: int = 0
@@ -57,30 +64,48 @@ var feeding_on: Node2D = null
 var _last_tap_time: float = 0.0
 @export var double_tap_window: float = 0.28
 
-# bubbles
+# burbujas/paneles
 var _bubble_root: Node2D
 var _bubble_stats: Area2D
 var _bubble_eat: Area2D
 var _bubble_stop: Area2D
 
-# panels + escudo
 var _panel_stats: Control
 var _panel_feed: Control
 var _panel_stop: Control
 var _shield: Control
 var _menu_open: bool = false
 
-# dirección
+# dirección y animación por código
 var _last_dir: Vector2 = Vector2.ZERO
+var _last_pick: String = ""          # sólo para depurar qué frame eligió
 
-# pausas
-@export var dwell_min: float = 1.2
-@export var dwell_max: float = 2.5
+# pausas/wander (más quieto y más rato)
+@export var dwell_min: float = 2.5
+@export var dwell_max: float = 6.0
 var _dwell_t: float = 0.0
 
-# idle “respirar”
+# respiración/leve bob
 @export var breathe_scale_amp: float = 0.035
 @export var step_bob_amp: float = 3.0
+
+# ───────────────── Loops por código (front/back) y blink
+@export var idle_swap_time: float = 2.0      # idle lento
+@export var move_swap_time: float = 0.25     # en movimiento
+var _front_phase_is_1: bool = true           # alterna front1/front2
+var _back_phase_is_1: bool = true            # alterna back1/back2
+var _loop_timer: float = 0.0
+
+@export var blink_interval_min: float = 3.5  # parpadea de vez en cuando
+@export var blink_interval_max: float = 7.5
+@export var blink_frame_time: float = 0.18   # mismo orden de magnitud que el frame idle
+var _blink_timer: float = 0.0
+var _blink_phase_time: float = 0.0
+var _blinking_active: bool = false
+
+# ───────────────── Mezcla direccional (favorecer diagonales)
+@export var diag_bias: float = 0.10
+@export var diag_min_mix: float = 0.30
 
 func _ready() -> void:
 	_rng.randomize()
@@ -94,6 +119,8 @@ func _ready() -> void:
 	stamina = max_stamina * 0.6
 	hunger = max_hunger * 0.35
 	visible = false
+
+	_reset_blink_timer()
 
 func start_post_birth(spawn_pos: Vector2) -> void:
 	global_position = spawn_pos
@@ -117,15 +144,20 @@ func _process(delta: float) -> void:
 			S.IDLE:
 				_process_idle(delta)
 
-	_update_sprite_from_velocity_hint()
+	_update_sprite_from_velocity_and_loop(delta)
 	_clamp_to_viewport()
 
 	if _dragging:
 		stamina = clampf(stamina - stamina_decay_drag_per_sec * delta, 0.0, max_stamina)
 
+# ─────────────────────────── Estados de comportamiento
+
 func _process_idle(delta: float) -> void:
-	var t := Time.get_ticks_msec() / 1000.0
-	var s := 1.0 + sin(t * TAU * 0.4) * breathe_scale_amp
+	# En idle, forzamos que la lógica de sprites nos considere "quietos"
+	_last_dir = Vector2.ZERO
+
+	var t: float = Time.get_ticks_msec() / 1000.0
+	var s: float = 1.0 + sin(t * TAU * 0.4) * breathe_scale_amp
 	scale = _base_scale * s
 
 	_dwell_t -= delta
@@ -139,8 +171,8 @@ func _process_wander(delta: float) -> void:
 
 	var target: Node2D = _nearest_food_bit()
 	if target:
-		var speed := move_speed
-		var dir := (target.global_position - global_position).normalized()
+		var speed: float = move_speed
+		var dir: Vector2 = (target.global_position - global_position).normalized()
 		if dir.y < -0.3:
 			speed *= 0.85
 		_move_towards(target.global_position, speed, delta)
@@ -154,23 +186,23 @@ func _process_wander(delta: float) -> void:
 	if _last_dir.length() > 0.01:
 		position.y += sin(Time.get_ticks_msec()/90.0) * (step_bob_amp * delta)
 
-	if _rng.randf() < 0.003:
+	# Entra en idle con más probabilidad
+	if _rng.randf() < 0.012:
 		_dwell_t = _randf_range(dwell_min, dwell_max)
 		_state = S.IDLE
 
 func _process_feeding(delta: float) -> void:
-	var feeding_active := false
+	var feeding_active: bool = false
 	if bits_manager and bits_manager.has_method("is_feeding_mode"):
 		feeding_active = bits_manager.call("is_feeding_mode")
 	if not feeding_active:
 		return
 
-	# Elegimos un objetivo (visual)
 	var target: Node2D = _nearest_food_bit()
 	feeding_on = target
 	if target:
-		var speed := move_speed
-		var dir := (target.global_position - global_position).normalized()
+		var speed: float = move_speed
+		var dir: Vector2 = (target.global_position - global_position).normalized()
 		if dir.y < -0.3:
 			speed *= 0.85
 		_move_towards(target.global_position, speed, delta)
@@ -180,21 +212,21 @@ func _process_feeding(delta: float) -> void:
 			_stop_feeding(true)
 		return
 
-	# Barrido: come cualquier FoodBit en radio
-	var eaten := _eat_food_bits_in_range()
+	var eaten: int = _eat_food_bits_in_range()
 	if eaten > 0:
 		for i in eaten:
 			_on_ate_bit()
 		feeding_on = null
 
+# ─────────────────────────── Comer
+
 func _eat_food_bits_in_range() -> int:
 	if bits_manager == null:
 		return 0
-	var eaten := 0
+	var eaten: int = 0
 	var list: Array = []
 	if bits_manager.has_method("get_food_bits"):
 		list = bits_manager.call("get_food_bits") as Array
-	# iterar sobre copia por si el manager modifica la lista al borrar
 	for item in list.duplicate():
 		if not is_instance_valid(item):
 			continue
@@ -204,17 +236,18 @@ func _eat_food_bits_in_range() -> int:
 				if bits_manager.has_method("remove_food_bit"):
 					bits_manager.call("remove_food_bit", b)
 				elif is_instance_valid(b):
-					b.queue_free() # doble seguro
+					b.queue_free()
 				eaten += 1
 	return eaten
 
 func _in_pickup_range(b: Node2D) -> bool:
 	if global_position.distance_to(b.global_position) <= eat_pickup_radius:
 		return true
-	# Segunda comprobación por si alguna textura/offset nos engaña
-	var local := to_local(b.global_position)
+	var local: Vector2 = to_local(b.global_position)
 	var rect := Rect2(Vector2(-10, -10), Vector2(20, 20))
 	return rect.has_point(local)
+
+# ─────────────────────────── Arrastre
 
 func _process_drag(_delta: float) -> void:
 	var vp: Vector2 = get_viewport_rect().size
@@ -226,6 +259,8 @@ func _process_drag(_delta: float) -> void:
 		_rng.randf_range(-drag_shake_amp, drag_shake_amp)
 	)
 	global_position = target + jitter
+
+# ─────────────────────────── Movimiento utilidades
 
 func _move_towards(to: Vector2, speed: float, delta: float) -> void:
 	var dir: Vector2 = (to - global_position)
@@ -256,29 +291,110 @@ func _nearest_food_bit() -> Node2D:
 				best = b
 	return best
 
-# ─── Sprites según dirección
-func _update_sprite_from_velocity_hint() -> void:
+# ─────────────────────────── Selección de sprite + loops + blink
+
+func _update_sprite_from_velocity_and_loop(delta: float) -> void:
+	# Dirección/velocidad brutas
 	var dir: Vector2 = _last_dir
 	if _state == S.DRAGGED:
 		dir = get_viewport().get_mouse_position() - global_position
 
-	var dir_n: Vector2 = dir.normalized()
-	if dir_n.length() < 0.2:
-		texture = tex_front
-		flip_h = false
+	var vel: float = dir.length()
+	var n: Vector2 = Vector2.ZERO
+	if vel > 0.0001:
+		n = dir.normalized()
+
+	# ¿Estamos quietos a efectos de animación?
+	var is_idle_now: bool = vel < 0.2 or _state == S.IDLE
+
+	# ── Parpadeo: sólo en idle y mirando al frente
+	if is_idle_now and _is_front_showing():
+		if _blinking_active:
+			_blink_phase_time -= delta
+			if _blink_phase_time <= 0.0:
+				_blinking_active = false
+		else:
+			_blink_timer -= delta
+			if _blink_timer <= 0.0:
+				# si está en front1 → blink2, si está en front2 → blink1
+				if _front_phase_is_1:
+					if tex_blink2: texture = tex_blink2
+				else:
+					if tex_blink1: texture = tex_blink1
+				_blinking_active = true
+				_blink_phase_time = blink_frame_time
+				_reset_blink_timer()
+	else:
+		# si nos movemos o no miramos al frente, cancelamos blink
+		_blinking_active = false
+
+	# ── Elegimos frame según dirección
+	var is_diagonal: bool = false
+	var ax: float = absf(n.x) + diag_bias
+	var ay: float = absf(n.y)
+	if ax > diag_min_mix and ay > diag_min_mix:
+		is_diagonal = true
+
+	_loop_timer += delta
+
+	# IDLE: siempre frontal en bucle (front1/2)
+	if is_idle_now:
+		if _loop_timer >= idle_swap_time:
+			_loop_timer = 0.0
+			_front_phase_is_1 = not _front_phase_is_1
+		_apply_front_loop()
 		return
 
-	if dir_n.y < -0.3:
-		texture = tex_back
-		flip_h = false
-	elif dir_n.y >= -0.3 and dir_n.y <= 0.2:
-		texture = tex_front_diag
-		flip_h = (dir_n.x > 0.0)
-	else:
-		texture = tex_front
-		flip_h = (dir_n.x > 0.5)
+	# Diagonales claras
+	if is_diagonal:
+		if n.y > 0.0 and n.x > 0.0:
+			if tex_did: texture = tex_did; _last_pick = "did"
+		elif n.y > 0.0 and n.x < 0.0:
+			if tex_dii: texture = tex_dii; _last_pick = "dii"
+		elif n.y < 0.0 and n.x > 0.0:
+			if tex_dsd: texture = tex_dsd; _last_pick = "dsd"
+		else:
+			if tex_dsi: texture = tex_dsi; _last_pick = "dsi"
+		return
 
-# ─── Comer / Poop
+	# Verticales (sin diagonal)
+	if n.y < -0.28:
+		# Back en bucle
+		if _loop_timer >= move_swap_time:
+			_loop_timer = 0.0
+			_back_phase_is_1 = not _back_phase_is_1
+		_apply_back_loop()
+		return
+
+	# Frontal hacia abajo o lateral puro: bucle frontal
+	if _loop_timer >= move_swap_time:
+		_loop_timer = 0.0
+		_front_phase_is_1 = not _front_phase_is_1
+	_apply_front_loop()
+
+func _apply_front_loop() -> void:
+	# Si está parpadeando, respetamos el blink ya puesto
+	if _blinking_active:
+		return
+	if _front_phase_is_1:
+		if tex_front1: texture = tex_front1; _last_pick = "front1"
+	else:
+		if tex_front2: texture = tex_front2; _last_pick = "front2"
+
+func _apply_back_loop() -> void:
+	if _back_phase_is_1:
+		if tex_back1: texture = tex_back1; _last_pick = "back1"
+	else:
+		if tex_back2: texture = tex_back2; _last_pick = "back2"
+
+func _is_front_showing() -> bool:
+	return texture == tex_front1 or texture == tex_front2 or _last_pick.begins_with("front")
+
+func _reset_blink_timer() -> void:
+	_blink_timer = _rng.randf_range(blink_interval_min, blink_interval_max)
+
+# ─────────────────────────── Comer / Poop
+
 func _on_ate_bit() -> void:
 	hunger = clampf(hunger - hunger_decrease_per_bit, 0.0, max_hunger)
 	stamina = clampf(stamina + stamina_gain_per_bit, 0.0, max_stamina)
@@ -312,8 +428,7 @@ func _spawn_poop() -> void:
 	var pgd: Script = preload("res://scripts/Poop.gd")
 	poop.set_script(pgd)
 
-# ─── UI / Burbujas y paneles: SIN CAMBIOS FUNCIONALES ─────────────────────────
-# (todo lo siguiente es igual a lo que ya tenías)
+# ─────────────────────────── UI / Burbujas y paneles (igual que tenías)
 
 func _toggle_bubbles() -> void:
 	if _bubble_root and is_instance_valid(_bubble_root):
@@ -601,7 +716,8 @@ func _close_panels() -> void:
 	_bubble_root = null
 	_destroy_shield()
 
-# ─── Alimentación on/off
+# ─────────────────────────── Alimentación on/off
+
 func _start_feeding() -> void:
 	_state = S.FEEDING
 	if bits_manager and bits_manager.has_method("set_feeding_mode"):
@@ -616,7 +732,8 @@ func _stop_feeding(success: bool) -> void:
 		tw.tween_property(self, "scale", _base_scale * 1.06, 0.15).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 		tw.tween_property(self, "scale", _base_scale, 0.20).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
-# ─── Input (doble-tap y drag)
+# ─────────────────────────── Input (doble-tap y drag)
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		var now: float = Time.get_ticks_msec() / 1000.0
@@ -655,14 +772,18 @@ func _unhandled_input(event: InputEvent) -> void:
 			var tw4: Tween = create_tween()
 			tw4.tween_property(self, "scale", _base_scale, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
+# ─────────────────────────── Utilidades
+
 func _is_mouse_over() -> bool:
-	if texture == null: return false
+	if texture == null:
+		return false
 	var local: Vector2 = to_local(get_viewport().get_mouse_position())
 	var rect := Rect2(-texture.get_size()*0.5, texture.get_size())
 	return rect.has_point(local)
 
 func _is_touch_over(pos: Vector2) -> bool:
-	if texture == null: return false
+	if texture == null:
+		return false
 	var local: Vector2 = to_local(pos)
 	var rect := Rect2(-texture.get_size()*0.5, texture.get_size())
 	return rect.has_point(local)

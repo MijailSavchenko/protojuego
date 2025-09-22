@@ -1,19 +1,43 @@
-[gd_scene load_steps=13 format=3 uid="uid://b7gackwwhgqxy"]
+[gd_scene load_steps=22 format=3 uid="uid://b7gackwwhgqxy"]
 
 [ext_resource type="Script" uid="uid://dceseljjdd3xl" path="res://scripts/Main.gd" id="1_rarhs"]
 [ext_resource type="Texture2D" uid="uid://bx4l4oqk2g4bk" path="res://assets/sprites/eggs/xeno/egg_xeno.png" id="1_rvslj"]
-[ext_resource type="Texture2D" uid="uid://bo1mri75r2thq" path="res://assets/sprites/creatures/xeno/xeno_front.png" id="2_0bbpv"]
 [ext_resource type="Script" uid="uid://cw5nx8wx5s1wk" path="res://scripts/FlashOverlay.gd" id="3_0bbpv"]
 [ext_resource type="Script" uid="uid://0kp17xvd344w" path="res://scripts/Egg.gd" id="3_nxtc6"]
 [ext_resource type="Texture2D" uid="uid://dkv5m6mb11fnt" path="res://assets/sprites/eggs/xeno/egg_xeno_broken.png" id="4_jlsqs"]
 [ext_resource type="Script" uid="uid://d1p3lt6g22xt4" path="res://scripts/BitsManager.gd" id="4_vcsgt"]
 [ext_resource type="Script" uid="uid://cxqfuoo6a84dm" path="res://scripts/Creature.gd" id="6_jlsqs"]
-[ext_resource type="Texture2D" uid="uid://debyw082trd32" path="res://assets/sprites/creatures/xeno/xeno_back.png" id="7_lhr70"]
-[ext_resource type="Texture2D" uid="uid://dewro4lqo40go" path="res://assets/sprites/creatures/xeno/xeno_front_diag.png" id="8_wp0k4"]
+[ext_resource type="Texture2D" uid="uid://c16nvpquhm7dr" path="res://assets/sprites/creatures/xeno/xeno_front1.png" id="7_wp0k4"]
+[ext_resource type="Texture2D" uid="uid://b3s42hb8xwwgo" path="res://assets/sprites/creatures/xeno/xeno_front2.png" id="8_1iba3"]
+[ext_resource type="Texture2D" uid="uid://22qdip2loy3j" path="res://assets/sprites/creatures/xeno/xeno_back1.png" id="8_bjd11"]
+[ext_resource type="Texture2D" uid="uid://cm36oktyr8b6i" path="res://assets/sprites/creatures/xeno/xeno_front_DID.png" id="9_1nqs0"]
+[ext_resource type="Texture2D" uid="uid://cv0u016lk0k23" path="res://assets/sprites/creatures/xeno/xeno_front_DII.png" id="9_bjd11"]
 [ext_resource type="PackedScene" uid="uid://bm7w4iktpqgpp" path="res://scenes/Poop.tscn" id="9_wp0k4"]
+[ext_resource type="Texture2D" uid="uid://bvqfli2qbxxmq" path="res://assets/sprites/creatures/xeno/xeno_back2.png" id="10_yxlcp"]
+[ext_resource type="Texture2D" uid="uid://dtrbcxbsmxmk4" path="res://assets/sprites/creatures/xeno/xeno_back_DSD.png" id="11_1iba3"]
+[ext_resource type="Shader" uid="uid://bicsjji15xkua" path="res://scenes/Main.gdshader" id="12_bjd11"]
+[ext_resource type="Texture2D" uid="uid://cfxgvw34pkrtl" path="res://assets/sprites/creatures/xeno/xeno_back_DSI.png" id="12_yxlcp"]
+[ext_resource type="Texture2D" uid="uid://dk8b3snxvkg0l" path="res://assets/sprites/creatures/xeno/xeno_front_blink1.png" id="15_bb450"]
+[ext_resource type="Texture2D" uid="uid://l2t6helo4eh3" path="res://assets/sprites/creatures/xeno/xeno_front_blink2.png" id="16_nfivy"]
 
 [sub_resource type="Environment" id="Environment_0bbpv"]
 background_mode = 1
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_qmy6f"]
+shader = ExtResource("12_bjd11")
+shader_parameter/brightness_boost = 1.1
+shader_parameter/contrast_boost = 1.05
+shader_parameter/scanline_strength = 0.22
+shader_parameter/chroma_px = 0.35
+shader_parameter/bleed_px = 0.75
+shader_parameter/bleed_strength = 0.25
+shader_parameter/curvature = 0.08
+shader_parameter/vignette_strength = 0.2
+shader_parameter/noise_amount = 0.02
+shader_parameter/flash_scanline_dampen = 0.8
+shader_parameter/enable_mask = 0.0
+shader_parameter/mask_strength = 0.35
+shader_parameter/mask_scale_px = 1.0
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_rarhs")
@@ -58,15 +82,21 @@ emitting = false
 
 [node name="Creature" type="Sprite2D" parent="."]
 visible = false
-texture = ExtResource("2_0bbpv")
 script = ExtResource("6_jlsqs")
-tex_front = ExtResource("2_0bbpv")
-tex_back = ExtResource("7_lhr70")
-tex_front_diag = ExtResource("8_wp0k4")
-eat_radius = 42.0
-eat_pickup_radius = 42.0
+tex_front1 = ExtResource("7_wp0k4")
+tex_front2 = ExtResource("8_1iba3")
+tex_back1 = ExtResource("8_bjd11")
+tex_back2 = ExtResource("10_yxlcp")
+tex_did = ExtResource("9_1nqs0")
+tex_dii = ExtResource("9_bjd11")
+tex_dsd = ExtResource("11_1iba3")
+tex_dsi = ExtResource("12_yxlcp")
+tex_blink1 = ExtResource("15_bb450")
+tex_blink2 = ExtResource("16_nfivy")
 bits_manager_path = NodePath("../BitsLayer/BitsManager")
 poop_scene = ExtResource("9_wp0k4")
+idle_swap_time = 1.0
+blink_frame_time = 1.0
 
 [node name="FlashOverlay" type="CanvasLayer" parent="."]
 script = ExtResource("3_0bbpv")
@@ -101,6 +131,17 @@ text = "Estado: Egg"
 
 [node name="TapCatcher" type="Control" parent="."]
 layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="CRTLayer" type="CanvasLayer" parent="."]
+
+[node name="CRT" type="ColorRect" parent="CRTLayer"]
+material = SubResource("ShaderMaterial_qmy6f")
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
