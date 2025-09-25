@@ -3,13 +3,41 @@ class_name Bit
 
 enum State { IDLE, APPROACH, SCATTER, SHINE, MERGE }
 
-const TYPE_LIST := ["AGUA", "FUEGO", "ELECTRICO", "PIEDRA", "AIRE"]
+# ===== Tipos =====
+# 23 tipos totales, 5 activos con patrón especial. El resto: patrón neutro.
+const TYPES_ACTIVE := ["NORMAL", "AQUA", "FLORA", "IGNEO", "XENO"]
+const TYPES_ALL := [
+	"NORMAL","AQUA","IGNEO","TORMENTA","ETER","LITHOS","CRISTAL","STELIUM",
+	"FLORA","ESPORA","FROST","ONIRIC","TOXICO","ARCANA","DRACO","INSECTOIDE",
+	"ESPECTRO","SONIDO","ORDEN","CAOS","XENO","AURORA","UMBRA"
+]
+
 const TYPE_COLOR := {
-	"AGUA": Color8(63, 169, 245),
-	"FUEGO": Color8(255, 69, 0),
-	"ELECTRICO": Color8(255, 215, 0),
-	"PIEDRA": Color8(156, 124, 56),
-	"AIRE": Color8(228, 249, 255)
+	# Activos
+	"NORMAL": Color8(221,221,221),
+	"AQUA":   Color8(63,169,245),
+	"FLORA":  Color8(60,179,113),
+	"IGNEO":  Color8(255,69,0),
+	"XENO":   Color8(192,128,160),
+	# Resto (placeholders)
+	"TORMENTA":    Color8(255,215,0),
+	"ETER":        Color8(228,249,255),
+	"LITHOS":      Color8(139,90,43),
+	"CRISTAL":     Color8(135,206,235),
+	"STELIUM":     Color8(192,192,192),
+	"ESPORA":      Color8(34,139,34),
+	"FROST":       Color8(173,216,230),
+	"ONIRIC":      Color8(218,112,214),
+	"TOXICO":      Color8(127,255,0),
+	"ARCANA":      Color8(255,105,180),
+	"DRACO":       Color8(255,215,0),
+	"INSECTOIDE":  Color8(255,191,0),
+	"ESPECTRO":    Color8(75,0,130),
+	"SONIDO":      Color8(0,255,255),
+	"ORDEN":       Color8(255,248,220),
+	"CAOS":        Color8(139,0,0),
+	"AURORA":      Color8(255,255,255),
+	"UMBRA":       Color8(46,8,84)
 }
 const WHITE := Color8(255, 255, 255)
 
@@ -25,6 +53,12 @@ const WHITE := Color8(255, 255, 255)
 @export var revert_to_white_time: float = 25.0
 @export var color_blend_time: float = 1.25
 @export var type_cycle_seconds: float = 3.0
+
+# ───── Bloqueo de color (consistencia visual↔conteo)
+@export var lock_on_interaction: bool = true
+@export var lock_duration_sec: float = 2.5
+@export var lock_extend_on_retouch: bool = true
+@export var hard_lock_during_merge: bool = true
 
 # ───── Movimiento global
 @export var base_speed: float = 90.0
@@ -63,9 +97,17 @@ var _predator: Node2D = null
 var core: Sprite2D
 var halo: Sprite2D = null
 var state: State = State.IDLE
-var current_type: String = "AGUA"
+
+# Tipos
+var current_type: String = "NORMAL"   # tipo interno/ciclando
+var locked_type: String = "NORMAL"    # tipo bloqueado (si aplica)
+
+# Timers
 var _type_t: float = 0.0
 var _t: float = 0.0
+var lock_timer: float = 0.0
+
+# Movimiento
 var vel: Vector2 = Vector2.ZERO
 var drift_dir: Vector2 = Vector2.ZERO
 
@@ -104,7 +146,9 @@ var noise_rate: float = 0.7
 func _ready() -> void:
 	randomize()
 	_make_visuals()
-	current_type = TYPE_LIST[randi() % TYPE_LIST.size()]
+	# Iniciar dentro del conjunto ACTIVO (5 tipos)
+	current_type = TYPES_ACTIVE[randi() % TYPES_ACTIVE.size()]
+	locked_type = current_type
 	vel = _random_dir() * base_speed
 	drift_dir = _random_dir()
 	white_mode = true
@@ -156,6 +200,15 @@ func set_pointer_state(pressed: bool, pos: Vector2) -> void:
 	pointer_pos = pos
 	if global_position.distance_to(pointer_pos) <= attract_radius * 0.9:
 		time_since_interaction = 0.0
+		# ── Bloqueo por interacción (parametrizable)
+		if lock_on_interaction:
+			if not color_locked:
+				color_locked = true
+				locked_type = current_type
+				white_mode = false
+				_apply_color(TYPE_COLOR.get(locked_type, WHITE))
+			if lock_extend_on_retouch:
+				lock_timer = lock_duration_sec
 
 func is_orbiting() -> bool:
 	if state != State.APPROACH:
@@ -190,42 +243,61 @@ func _process(delta: float) -> void:
 
 # ───────── Color
 func _update_color_logic(delta: float) -> void:
+	# 1) Si está bloqueado (o en merge con hard lock), pintar fijo y gestionar unlock
+	if color_locked or (merging and hard_lock_during_merge):
+		_apply_color(TYPE_COLOR.get(locked_type, WHITE))
+		# El lock no expira durante MERGE
+		if color_locked and not (merging and hard_lock_during_merge):
+			lock_timer -= delta
+			if lock_timer <= 0.0 and not pointer_pressed:
+				color_locked = false
+				# reanudar ciclo más adelante; mantenemos current_type en locked_type
+				current_type = locked_type
+		return
+
+	# 2) Flicker blanco mientras está en modo blanco
 	if white_mode:
 		var a: float = lerp(flicker_min_a, flicker_max_a, 0.5 + 0.5 * sin(_t * TAU * flicker_speed))
 		core.modulate = Color(1, 1, 1, a)
 		if use_halo and halo:
 			halo.modulate = Color(halo.modulate.r, halo.modulate.g, halo.modulate.b, a * 0.25)
 
-	if not pointer_pressed and time_since_interaction >= revert_to_white_time:
+	# 3) Reversión a blanco tras inactividad (si NO está bloqueado)
+	if not pointer_pressed and not color_locked and time_since_interaction >= revert_to_white_time:
 		white_mode = true
-		color_locked = false
 		from_color = WHITE
 		to_color = WHITE
 		blend_t = 1.0
-		current_type = "AGUA"
+		current_type = "NORMAL"
 		core.modulate = WHITE
 		if use_halo and halo:
 			halo.modulate = Color(1,1,1,halo_alpha)
 
-	if not color_locked and not white_mode and time_since_interaction >= idle_to_cycle_delay:
+	# 4) Ciclo de color entre tipos ACTIVOS (si no está en blanco)
+	if not white_mode and time_since_interaction >= idle_to_cycle_delay:
 		_type_t += delta
 		if _type_t >= type_cycle_seconds:
 			_type_t = 0.0
-			var next_idx: int = (TYPE_LIST.find(current_type) + 1) % TYPE_LIST.size()
-			current_type = TYPE_LIST[next_idx]
+			var list := TYPES_ACTIVE
+			var idx: int = list.find(current_type)
+			if idx == -1:
+				idx = 0
+				current_type = list[0]
+			var next_idx: int = (idx + 1) % list.size()
+			current_type = list[next_idx]
 			from_color = _current_color_rgb()
-			to_color = TYPE_COLOR[current_type]
+			to_color = TYPE_COLOR.get(current_type, WHITE)
 			blend_t = 0.0
 		if blend_t < 1.0:
 			blend_t = min(1.0, blend_t + delta / color_blend_time)
 			var c: Color = from_color.lerp(to_color, blend_t)
 			_apply_color(c)
 
+	# 5) Salida de blanco → iniciar ciclo
 	if white_mode and time_since_interaction >= idle_to_cycle_delay:
 		white_mode = false
-		color_locked = false
 		from_color = _current_color_rgb()
-		to_color = TYPE_COLOR[current_type]
+		to_color = TYPE_COLOR.get(current_type, WHITE)
 		blend_t = 0.0
 		_apply_color(from_color.lerp(to_color, blend_t))
 
@@ -257,6 +329,11 @@ func start_merge(target: Vector2) -> void:
 	merging = true
 	merge_target = target
 	state = State.MERGE
+	if hard_lock_during_merge:
+		color_locked = true
+		locked_type = current_type
+		white_mode = false
+		_apply_color(TYPE_COLOR.get(locked_type, WHITE))
 	if use_halo and halo:
 		var a0: float = halo.modulate.a
 		var tw := create_tween()
@@ -281,26 +358,23 @@ func _update_idle(delta: float) -> void:
 	var type_vel: Vector2 = Vector2.ZERO
 	if not white_mode:
 		match current_type:
-			"AGUA":
+			"AQUA":
 				type_vel = Vector2(sin(_t * 2.6), cos(_t * 2.0)) * 50.0
-			"FUEGO":
+			"IGNEO":
 				type_vel = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * 120.0
-			"ELECTRICO":
-				var sx: float = float(sign(sin(_t * 8.0)))
-				type_vel.x = sx * max_speed
-				type_vel.y = sin(_t * 12.0) * 40.0
-			"PIEDRA":
-				type_vel.y = clamp(vel.y + 230.0 * delta, -max_speed, max_speed)
-				type_vel.x = lerp(vel.x, 0.0, 0.05)
-			"AIRE":
-				var aa: float = _t * 1.3
-				type_vel = Vector2(cos(aa), sin(aa)) * (base_speed * 0.8)
+			"FLORA":
+				var up: float = 40.0 * max(0.0, sin(_t * 2.2))
+				type_vel = Vector2(sin(_t * 1.6) * 20.0, -up)
+			"XENO":
+				var a: float = sin(_t * 7.0) * 1.7 + cos(_t * 5.3) * 0.9
+				type_vel = Vector2(cos(a), sin(a)) * (base_speed * 0.9)
+			"NORMAL":
+				type_vel = Vector2.ZERO
+			_:
+				type_vel = Vector2.ZERO
 
 	var steer: Vector2 = _wall_steer()
 	var target: Vector2 = (drift_vel + type_vel).lerp(steer, wall_steer_blend)
-
-	# IMPORTANTE: no hacemos “flee del depredador” para facilitar que la criatura coma
-	# (dejamos el código y variables para compatibilidad, pero no se usa)
 
 	vel = vel.move_toward(target, 75.0 * delta)
 	_move_and_rebound(delta)
@@ -321,20 +395,16 @@ func _wall_steer() -> Vector2:
 	if near_bottom: steer.y -= wall_repulsion
 
 	if near_left or near_right:
-		var vy := 1.0 if vel.y == 0.0 else vel.y
+		var vy: float = 1.0 if vel.y == 0.0 else vel.y
 		steer.y += sign(vy) * wall_tangent
 	if near_top or near_bottom:
-		var vx := 1.0 if vel.x == 0.0 else vel.x
+		var vx: float = 1.0 if vel.x == 0.0 else vel.x
 		steer.x += sign(vx) * wall_tangent
 
 	return steer
 
 func _start_approach() -> void:
 	state = State.APPROACH
-	color_locked = true
-	from_color = _current_color_rgb()
-	to_color = from_color
-	blend_t = 1.0
 	orbit_center = pointer_pos
 	approach_angle = (global_position - orbit_center).angle()
 	var speed: float = randf_range(approach_ang_speed_min, approach_ang_speed_max)
@@ -344,6 +414,17 @@ func _start_approach() -> void:
 	approach_radius = max(8.0, stand_off_radius * jitter)
 	angle_noise_t = randf() * 10.0
 	radius_noise_t = randf() * 10.0
+
+	# Bloqueo al iniciar approach (si está activado)
+	if lock_on_interaction:
+		color_locked = true
+		locked_type = current_type
+		lock_timer = lock_duration_sec
+		white_mode = false
+		_apply_color(TYPE_COLOR.get(locked_type, WHITE))
+	else:
+		# Si no bloqueamos por interacción, al menos salimos de blanco para responder visualmente
+		white_mode = false
 
 func _update_approach(delta: float) -> void:
 	orbit_center = orbit_center.lerp(pointer_pos, center_follow)
@@ -369,7 +450,7 @@ func _update_approach(delta: float) -> void:
 func _enter_scatter() -> void:
 	state = State.SCATTER
 	scatter_t = 0.0
-	color_locked = false
+	# NO desactivar el lock aquí; dejaremos que expire por timer.
 	time_since_interaction = 0.0
 	var tangent_dir: Vector2 = Vector2(-sin(approach_angle), cos(approach_angle))
 	vel = (tangent_dir * (stand_off_radius * 2.0) + _random_dir() * 20.0).limit_length(max_speed)
@@ -403,6 +484,9 @@ func _random_dir() -> Vector2:
 
 # ───────── Integración con BitsManager (conteo por tipo)
 func get_type_id() -> String:
+	# Lo que cuenta el manager es lo que se ve (si está bloqueado/merge)
+	if color_locked or (merging and hard_lock_during_merge):
+		return locked_type
 	return current_type
 
 # ───────── Depredador (no usado)
@@ -410,3 +494,22 @@ func set_predator(p: Node2D) -> void:
 	_predator = p
 func clear_predator() -> void:
 	_predator = null
+
+# ───────── Soporte legado para forzar especie (nombres antiguos → nuevos)
+func set_species(species_name: String) -> void:
+	var s: String = species_name.to_upper()
+	match s:
+		"AGUA": s = "AQUA"
+		"FUEGO": s = "IGNEO"
+		"ELECTRICO": s = "TORMENTA"
+		"PIEDRA": s = "LITHOS"
+		"AIRE": s = "ETER"
+		_: pass
+	if TYPES_ALL.has(s):
+		current_type = s
+		# aplica color inmediatamente (y cancela blanco)
+		from_color = _current_color_rgb()
+		to_color = TYPE_COLOR.get(current_type, WHITE)
+		blend_t = 0.0
+		white_mode = false
+		_apply_color(to_color)

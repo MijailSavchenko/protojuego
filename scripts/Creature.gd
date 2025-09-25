@@ -1,6 +1,7 @@
 extends Sprite2D
 
-# ───────────────── Sprites (una especie)
+# ===================== Sprites activos (set actual en uso) =====================
+# Mantengo tus exports existentes como el "set activo" que usa la criatura.
 @export var tex_front1: Texture2D
 @export var tex_front2: Texture2D
 @export var tex_back1:  Texture2D
@@ -12,7 +13,69 @@ extends Sprite2D
 @export var tex_blink1: Texture2D   # cierre sobre front2
 @export var tex_blink2: Texture2D   # cierre sobre front1
 
-# ───────────────── Movimiento y detección
+# ===================== Packs por especie (arrastrar en Inspector) =====================
+# Si no arrastras alguno, se usa el set activo actual como fallback.
+# NORMAL
+@export var norm_front1: Texture2D
+@export var norm_front2: Texture2D
+@export var norm_back1:  Texture2D
+@export var norm_back2:  Texture2D
+@export var norm_did:    Texture2D
+@export var norm_dii:    Texture2D
+@export var norm_dsd:    Texture2D
+@export var norm_dsi:    Texture2D
+@export var norm_blink1: Texture2D
+@export var norm_blink2: Texture2D
+# AQUA
+@export var aqua_front1: Texture2D
+@export var aqua_front2: Texture2D
+@export var aqua_back1:  Texture2D
+@export var aqua_back2:  Texture2D
+@export var aqua_did:    Texture2D
+@export var aqua_dii:    Texture2D
+@export var aqua_dsd:    Texture2D
+@export var aqua_dsi:    Texture2D
+@export var aqua_blink1: Texture2D
+@export var aqua_blink2: Texture2D
+# FLORA
+@export var flora_front1: Texture2D
+@export var flora_front2: Texture2D
+@export var flora_back1:  Texture2D
+@export var flora_back2:  Texture2D
+@export var flora_did:    Texture2D
+@export var flora_dii:    Texture2D
+@export var flora_dsd:    Texture2D
+@export var flora_dsi:    Texture2D
+@export var flora_blink1: Texture2D
+@export var flora_blink2: Texture2D
+# IGNEO
+@export var igneo_front1: Texture2D
+@export var igneo_front2: Texture2D
+@export var igneo_back1:  Texture2D
+@export var igneo_back2:  Texture2D
+@export var igneo_did:    Texture2D
+@export var igneo_dii:    Texture2D
+@export var igneo_dsd:    Texture2D
+@export var igneo_dsi:    Texture2D
+@export var igneo_blink1: Texture2D
+@export var igneo_blink2: Texture2D
+# XENO
+@export var xeno_front1: Texture2D
+@export var xeno_front2: Texture2D
+@export var xeno_back1:  Texture2D
+@export var xeno_back2:  Texture2D
+@export var xeno_did:    Texture2D
+@export var xeno_dii:    Texture2D
+@export var xeno_dsd:    Texture2D
+@export var xeno_dsi:    Texture2D
+@export var xeno_blink1: Texture2D
+@export var xeno_blink2: Texture2D
+
+# Especie actual
+var _species: String = "NORMAL"
+@export var species_default: String = "NORMAL"  # por si nace sin set_species
+
+# ===================== Movimiento y detección =====================
 @export var move_speed: float = 120.0
 @export var wander_speed: float = 65.0
 @export var sense_radius: float = 220.0
@@ -20,11 +83,14 @@ extends Sprite2D
 @export var eat_pickup_radius: float = 28.0
 @export var screen_margin: float = 0.0
 
-# ───────────────── Drag (arrastre)
+# En esta fase queremos que NO deambule en idle.
+@export var allow_idle_wander: bool = false
+
+# ===================== Drag (arrastre) =====================
 @export var drag_scale: float = 1.15
 @export var drag_shake_amp: float = 2.0
 
-# ───────────────── Stats
+# ===================== Stats =====================
 @export var max_stamina: float = 100.0
 @export var max_hunger: float = 100.0
 @export var hunger_increase_per_sec: float = 2.0
@@ -34,17 +100,17 @@ extends Sprite2D
 @export var poop_every_n_bits: int = 3
 @export var stamina_gain_per_bit: float = 6.0
 
-# ───────────────── Integraciones
+# ===================== Integraciones =====================
 @export var bits_manager_path: NodePath
 @export var poop_scene: PackedScene
 var bits_manager: Node = null          # admite Control o Node2D
 
-# ───────────────── UI mínima (burbujas)
+# ===================== UI mínima (burbujas) =====================
 @export var bubble_offset: Vector2 = Vector2(0, -48)
 @export var bubble_gap: float = 28.0
 @export var bubble_scale: float = 0.9
 
-# ───────────────── Estados
+# ===================== Estados =====================
 enum S { IDLE, WANDER, FEEDING, DRAGGED }
 var _state: S = S.IDLE
 var _dragging: bool = false
@@ -80,7 +146,7 @@ var _menu_open: bool = false
 var _last_dir: Vector2 = Vector2.ZERO
 var _last_pick: String = ""          # sólo para depurar qué frame eligió
 
-# pausas/wander (más quieto y más rato)
+# pausas/wander
 @export var dwell_min: float = 2.5
 @export var dwell_max: float = 6.0
 var _dwell_t: float = 0.0
@@ -89,7 +155,7 @@ var _dwell_t: float = 0.0
 @export var breathe_scale_amp: float = 0.035
 @export var step_bob_amp: float = 3.0
 
-# ───────────────── Loops por código (front/back) y blink
+# ===================== Loops por código (front/back) y blink =====================
 @export var idle_swap_time: float = 2.0      # idle lento
 @export var move_swap_time: float = 0.25     # en movimiento
 var _front_phase_is_1: bool = true           # alterna front1/front2
@@ -103,7 +169,7 @@ var _blink_timer: float = 0.0
 var _blink_phase_time: float = 0.0
 var _blinking_active: bool = false
 
-# ───────────────── Mezcla direccional (favorecer diagonales)
+# ===================== Mezcla direccional (favorecer diagonales) =====================
 @export var diag_bias: float = 0.10
 @export var diag_min_mix: float = 0.30
 
@@ -125,12 +191,16 @@ func _ready() -> void:
 func start_post_birth(spawn_pos: Vector2) -> void:
 	global_position = spawn_pos
 	visible = true
-	_state = S.WANDER
+	_state = S.IDLE  # ← ya no arrancamos en WANDER
 	_dwell_t = _randf_range(dwell_min, dwell_max)
+	# Si no nos han llamado a set_species, usar default
+	if _species == "NORMAL" and species_default != "NORMAL":
+		set_species(species_default)
 
 func _process(delta: float) -> void:
 	hunger = clampf(hunger + hunger_increase_per_sec * delta, 0.0, max_hunger)
 
+	# --- FIX: condición y sintaxis correctas ---
 	if _menu_open and _state != S.DRAGGED:
 		_process_idle(delta)
 	else:
@@ -150,7 +220,7 @@ func _process(delta: float) -> void:
 	if _dragging:
 		stamina = clampf(stamina - stamina_decay_drag_per_sec * delta, 0.0, max_stamina)
 
-# ─────────────────────────── Estados de comportamiento
+# ===================== Estados de comportamiento =====================
 
 func _process_idle(delta: float) -> void:
 	# En idle, forzamos que la lógica de sprites nos considere "quietos"
@@ -161,10 +231,14 @@ func _process_idle(delta: float) -> void:
 	scale = _base_scale * s
 
 	_dwell_t -= delta
-	if _dwell_t <= 0.0 and not _menu_open:
+	# Nueva regla: NO pasar a WANDER salvo que esté permitido explícitamente
+	if allow_idle_wander and _dwell_t <= 0.0 and not _menu_open:
 		_state = S.WANDER
 
 func _process_wander(delta: float) -> void:
+	if not allow_idle_wander:
+		_state = S.IDLE
+		return
 	if _dwell_t > 0.0:
 		_state = S.IDLE
 		return
@@ -186,7 +260,6 @@ func _process_wander(delta: float) -> void:
 	if _last_dir.length() > 0.01:
 		position.y += sin(Time.get_ticks_msec()/90.0) * (step_bob_amp * delta)
 
-	# Entra en idle con más probabilidad
 	if _rng.randf() < 0.012:
 		_dwell_t = _randf_range(dwell_min, dwell_max)
 		_state = S.IDLE
@@ -207,7 +280,9 @@ func _process_feeding(delta: float) -> void:
 			speed *= 0.85
 		_move_towards(target.global_position, speed, delta)
 	else:
-		_process_wander(delta)
+		# En feeding sin objetivo, no vagabundear si está desactivado.
+		if allow_idle_wander:
+			_process_wander(delta)
 		if hunger <= 0.05 * max_hunger:
 			_stop_feeding(true)
 		return
@@ -218,7 +293,7 @@ func _process_feeding(delta: float) -> void:
 			_on_ate_bit()
 		feeding_on = null
 
-# ─────────────────────────── Comer
+# ===================== Comer =====================
 
 func _eat_food_bits_in_range() -> int:
 	if bits_manager == null:
@@ -247,7 +322,7 @@ func _in_pickup_range(b: Node2D) -> bool:
 	var rect := Rect2(Vector2(-10, -10), Vector2(20, 20))
 	return rect.has_point(local)
 
-# ─────────────────────────── Arrastre
+# ===================== Arrastre =====================
 
 func _process_drag(_delta: float) -> void:
 	var vp: Vector2 = get_viewport_rect().size
@@ -260,7 +335,7 @@ func _process_drag(_delta: float) -> void:
 	)
 	global_position = target + jitter
 
-# ─────────────────────────── Movimiento utilidades
+# ===================== Movimiento utilidades =====================
 
 func _move_towards(to: Vector2, speed: float, delta: float) -> void:
 	var dir: Vector2 = (to - global_position)
@@ -291,7 +366,7 @@ func _nearest_food_bit() -> Node2D:
 				best = b
 	return best
 
-# ─────────────────────────── Selección de sprite + loops + blink
+# ===================== Selección de sprite + loops + blink =====================
 
 func _update_sprite_from_velocity_and_loop(delta: float) -> void:
 	# Dirección/velocidad brutas
@@ -393,7 +468,7 @@ func _is_front_showing() -> bool:
 func _reset_blink_timer() -> void:
 	_blink_timer = _rng.randf_range(blink_interval_min, blink_interval_max)
 
-# ─────────────────────────── Comer / Poop
+# ===================== Comer / Poop =====================
 
 func _on_ate_bit() -> void:
 	hunger = clampf(hunger - hunger_decrease_per_bit, 0.0, max_hunger)
@@ -428,7 +503,7 @@ func _spawn_poop() -> void:
 	var pgd: Script = preload("res://scripts/Poop.gd")
 	poop.set_script(pgd)
 
-# ─────────────────────────── UI / Burbujas y paneles (igual que tenías)
+# ===================== UI / Burbujas y paneles (igual que tenías) =====================
 
 func _toggle_bubbles() -> void:
 	if _bubble_root and is_instance_valid(_bubble_root):
@@ -716,7 +791,7 @@ func _close_panels() -> void:
 	_bubble_root = null
 	_destroy_shield()
 
-# ─────────────────────────── Alimentación on/off
+# ===================== Alimentación on/off =====================
 
 func _start_feeding() -> void:
 	_state = S.FEEDING
@@ -724,7 +799,7 @@ func _start_feeding() -> void:
 		bits_manager.call("set_feeding_mode", true, self)
 
 func _stop_feeding(success: bool) -> void:
-	_state = S.WANDER
+	_state = S.IDLE  # ← al terminar, quieta
 	if bits_manager and bits_manager.has_method("set_feeding_mode"):
 		bits_manager.call("set_feeding_mode", false, null)
 	if success:
@@ -732,7 +807,7 @@ func _stop_feeding(success: bool) -> void:
 		tw.tween_property(self, "scale", _base_scale * 1.06, 0.15).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 		tw.tween_property(self, "scale", _base_scale, 0.20).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
-# ─────────────────────────── Input (doble-tap y drag)
+# ===================== Input (doble-tap y drag) =====================
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
@@ -772,7 +847,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			var tw4: Tween = create_tween()
 			tw4.tween_property(self, "scale", _base_scale, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
-# ─────────────────────────── Utilidades
+# ===================== Utilidades =====================
 
 func _is_mouse_over() -> bool:
 	if texture == null:
@@ -790,3 +865,48 @@ func _is_touch_over(pos: Vector2) -> bool:
 
 func _randf_range(a: float, b: float) -> float:
 	return a + _rng.randf() * (b - a)
+
+# ===================== Especie: API y helpers =====================
+
+func set_species(species_name: String) -> void:
+	var s := species_name.to_upper()
+	match s:
+		"AGUA":    s = "AQUA"
+		"FUEGO":   s = "IGNEO"
+		"ELECTRICO": s = "TORMENTA" # no activo; ignoraremos si no hay pack
+		"PIEDRA":  s = "LITHOS"     # no activo
+		"AIRE":    s = "ETER"       # no activo
+		_: pass
+	_species = s
+	_apply_species_textures()
+
+func get_species() -> String:
+	return _species
+
+func _apply_species_textures() -> void:
+	match _species:
+		"NORMAL":
+			_assign_pack(norm_front1, norm_front2, norm_back1, norm_back2, norm_did, norm_dii, norm_dsd, norm_dsi, norm_blink1, norm_blink2)
+		"AQUA":
+			_assign_pack(aqua_front1, aqua_front2, aqua_back1, aqua_back2, aqua_did, aqua_dii, aqua_dsd, aqua_dsi, aqua_blink1, aqua_blink2)
+		"FLORA":
+			_assign_pack(flora_front1, flora_front2, flora_back1, flora_back2, flora_did, flora_dii, flora_dsd, flora_dsi, flora_blink1, flora_blink2)
+		"IGNEO":
+			_assign_pack(igneo_front1, igneo_front2, igneo_back1, igneo_back2, igneo_did, igneo_dii, igneo_dsd, igneo_dsi, igneo_blink1, igneo_blink2)
+		"XENO":
+			_assign_pack(xeno_front1, xeno_front2, xeno_back1, xeno_back2, xeno_did, xeno_dii, xeno_dsd, xeno_dsi, xeno_blink1, xeno_blink2)
+		_:
+			# Por seguridad, no cambiamos nada si la especie no está entre las activas
+			pass
+
+func _assign_pack(f1: Texture2D, f2: Texture2D, b1: Texture2D, b2: Texture2D, did: Texture2D, dii: Texture2D, dsd: Texture2D, dsi: Texture2D, bl1: Texture2D, bl2: Texture2D) -> void:
+	if f1: tex_front1 = f1
+	if f2: tex_front2 = f2
+	if b1: tex_back1 = b1
+	if b2: tex_back2 = b2
+	if did: tex_did = did
+	if dii: tex_dii = dii
+	if dsd: tex_dsd = dsd
+	if dsi: tex_dsi = dsi
+	if bl1: tex_blink1 = bl1
+	if bl2: tex_blink2 = bl2

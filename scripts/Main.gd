@@ -7,6 +7,10 @@ extends Node2D
 @onready var world_env: WorldEnvironment = get_node_or_null("WorldEnv")
 @onready var flash_overlay: CanvasLayer = get_node_or_null("FlashOverlay")
 
+# Si quieres que arranque música al cargar la escena,
+# arrastra tu AudioStream a esta export y listo.
+@export var boot_music: AudioStream
+
 func _ready() -> void:
 	# Fondo negro limpio
 	if world_env and world_env.environment:
@@ -31,6 +35,14 @@ func _ready() -> void:
 		var flash := flash_overlay.get_node_or_null("Flash")
 		if flash:
 			flash.visible = false
+
+	# Música de fondo
+	if boot_music and Engine.has_singleton("AudioServer"): # proyecto con audio
+		if Engine.is_editor_hint():
+			# En editor también suena si lo deseas
+			AudioManager.play_music(boot_music, false, true)
+		else:
+			AudioManager.play_music(boot_music, false, true)
 
 	print("Main listo.")
 
