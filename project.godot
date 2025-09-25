@@ -15,11 +15,15 @@ run/main_scene="uid://b7gackwwhgqxy"
 config/features=PackedStringArray("4.4", "GL Compatibility")
 config/icon="res://icon.svg"
 
+[autoload]
+
+AudioManager="*res://scripts/AudioManager.gd"
+
 [display]
 
-window/size/viewport_width=720
-window/size/viewport_height=1280
-window/stretch/mode="canvas_items"
+window/size/viewport_width=360
+window/size/viewport_height=640
+window/stretch/mode="viewport"
 window/stretch/aspect="keep_width"
 window/handheld/orientation=1
 
@@ -27,3 +31,5 @@ window/handheld/orientation=1
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+2d/snap/snap_2d_transforms_to_pixel=true

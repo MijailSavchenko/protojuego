@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=3 uid="uid://bm7w4iktpqgpp"]
+
+[ext_resource type="Script" uid="uid://wagirynj8jvg" path="res://scripts/Poop.gd" id="1_p7n6n"]
+[ext_resource type="Texture2D" uid="uid://c3u5jto3ml5go" path="res://assets/sprites/poops/poop.png" id="2_1rsgm"]
+
+[node name="Poop" type="Node2D"]
+z_index = 1
+script = ExtResource("1_p7n6n")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+z_index = -1
+texture = ExtResource("2_1rsgm")
+script = ExtResource("1_p7n6n")

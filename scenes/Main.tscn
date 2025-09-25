@@ -1,20 +1,115 @@
-[gd_scene load_steps=9 format=3 uid="uid://b7gackwwhgqxy"]
+[gd_scene load_steps=87 format=3 uid="uid://b7gackwwhgqxy"]
 
 [ext_resource type="Script" uid="uid://dceseljjdd3xl" path="res://scripts/Main.gd" id="1_rarhs"]
 [ext_resource type="Texture2D" uid="uid://bx4l4oqk2g4bk" path="res://assets/sprites/eggs/xeno/egg_xeno.png" id="1_rvslj"]
-[ext_resource type="Texture2D" uid="uid://bo1mri75r2thq" path="res://assets/sprites/creatures/xeno/xeno_front.png" id="2_0bbpv"]
+[ext_resource type="AudioStream" uid="uid://u42hfyceg1bc" path="res://assets/audio/music/zen_loop.ogg" id="2_1nqs0"]
 [ext_resource type="Script" uid="uid://cw5nx8wx5s1wk" path="res://scripts/FlashOverlay.gd" id="3_0bbpv"]
 [ext_resource type="Script" uid="uid://0kp17xvd344w" path="res://scripts/Egg.gd" id="3_nxtc6"]
+[ext_resource type="AudioStream" uid="uid://wdhtvwslbd0n" path="res://assets/audio/sfx/bits/bit_orbit_loop1.ogg" id="4_dg70y"]
 [ext_resource type="Texture2D" uid="uid://dkv5m6mb11fnt" path="res://assets/sprites/eggs/xeno/egg_xeno_broken.png" id="4_jlsqs"]
 [ext_resource type="Script" uid="uid://d1p3lt6g22xt4" path="res://scripts/BitsManager.gd" id="4_vcsgt"]
+[ext_resource type="AudioStream" uid="uid://b8ub4yn5u6r2v" path="res://assets/audio/sfx/bits/bit_orbit_loop2.ogg" id="5_pnhog"]
+[ext_resource type="AudioStream" uid="uid://drws47wvfv2t5" path="res://assets/audio/sfx/bits/bit_orbit_loop3.ogg" id="6_2c4at"]
+[ext_resource type="Script" uid="uid://cxqfuoo6a84dm" path="res://scripts/Creature.gd" id="6_jlsqs"]
+[ext_resource type="AudioStream" uid="uid://cfdgntj8j0mhs" path="res://assets/audio/sfx/bits/bit_merge_rise1.ogg" id="7_g6wdg"]
+[ext_resource type="Texture2D" uid="uid://c16nvpquhm7dr" path="res://assets/sprites/creatures/xeno/xeno_front1.png" id="7_wp0k4"]
+[ext_resource type="Texture2D" uid="uid://b3s42hb8xwwgo" path="res://assets/sprites/creatures/xeno/xeno_front2.png" id="8_1iba3"]
+[ext_resource type="Texture2D" uid="uid://22qdip2loy3j" path="res://assets/sprites/creatures/xeno/xeno_back1.png" id="8_bjd11"]
+[ext_resource type="AudioStream" uid="uid://c5vb0xpmm7s4o" path="res://assets/audio/sfx/bits/bit_merge_rise2.ogg" id="8_hq6as"]
+[ext_resource type="Texture2D" uid="uid://cm36oktyr8b6i" path="res://assets/sprites/creatures/xeno/xeno_front_DID.png" id="9_1nqs0"]
+[ext_resource type="Texture2D" uid="uid://cv0u016lk0k23" path="res://assets/sprites/creatures/xeno/xeno_front_DII.png" id="9_bjd11"]
+[ext_resource type="AudioStream" uid="uid://cdmm28shma7h8" path="res://assets/audio/sfx/bits/bit_merge_rise3.ogg" id="9_kxyth"]
+[ext_resource type="PackedScene" uid="uid://bm7w4iktpqgpp" path="res://scenes/Poop.tscn" id="9_wp0k4"]
+[ext_resource type="AudioStream" uid="uid://d3qluw2eu5fb4" path="res://assets/audio/sfx/bits/bit_spawn1.ogg" id="10_cobve"]
+[ext_resource type="Texture2D" uid="uid://bvqfli2qbxxmq" path="res://assets/sprites/creatures/xeno/xeno_back2.png" id="10_yxlcp"]
+[ext_resource type="Texture2D" uid="uid://dtrbcxbsmxmk4" path="res://assets/sprites/creatures/xeno/xeno_back_DSD.png" id="11_1iba3"]
+[ext_resource type="AudioStream" uid="uid://bg8prq0rge83o" path="res://assets/audio/sfx/bits/bit_spawn2.ogg" id="11_cmqll"]
+[ext_resource type="AudioStream" uid="uid://bl4mhxcaau2p3" path="res://assets/audio/sfx/bits/bit_spawn3.ogg" id="12_8cp6k"]
+[ext_resource type="Shader" uid="uid://bicsjji15xkua" path="res://scenes/Main.gdshader" id="12_bjd11"]
+[ext_resource type="Texture2D" uid="uid://cfxgvw34pkrtl" path="res://assets/sprites/creatures/xeno/xeno_back_DSI.png" id="12_yxlcp"]
+[ext_resource type="AudioStream" uid="uid://rh4cbgnrqyla" path="res://assets/audio/sfx/bits/ritual_start.ogg" id="13_8b871"]
+[ext_resource type="AudioStream" uid="uid://dcpinbiqp4kan" path="res://assets/audio/sfx/bits/ritual_end.ogg" id="14_v0vrg"]
+[ext_resource type="Texture2D" uid="uid://dk8b3snxvkg0l" path="res://assets/sprites/creatures/xeno/xeno_front_blink1.png" id="15_bb450"]
+[ext_resource type="Texture2D" uid="uid://l2t6helo4eh3" path="res://assets/sprites/creatures/xeno/xeno_front_blink2.png" id="16_nfivy"]
+[ext_resource type="Texture2D" uid="uid://clk45ldiave6s" path="res://assets/sprites/eggs/normal/egg_norm.png" id="17_x1gp3"]
+[ext_resource type="Texture2D" uid="uid://dt1r42t2djkn3" path="res://assets/sprites/eggs/normal/egg_norm_broken.png" id="18_le2d2"]
+[ext_resource type="Texture2D" uid="uid://cwao0sio2bcph" path="res://assets/sprites/eggs/aqua/egg_aqua.png" id="19_gexia"]
+[ext_resource type="Texture2D" uid="uid://bfqyo6wcc12p3" path="res://assets/sprites/eggs/aqua/egg_aqua_broken.png" id="20_fun0h"]
+[ext_resource type="Texture2D" uid="uid://ca7vk3nwsov1w" path="res://assets/sprites/eggs/flora/egg_flora.png" id="21_oqdxe"]
+[ext_resource type="Texture2D" uid="uid://cgwjpvycvad7e" path="res://assets/sprites/eggs/flora/egg_flora_broken.png" id="22_4pmbt"]
+[ext_resource type="Texture2D" uid="uid://c8ct4hv81aad7" path="res://assets/sprites/eggs/igneo/egg_igneo.png" id="23_4pegn"]
+[ext_resource type="Texture2D" uid="uid://tyg5c2bi2qxq" path="res://assets/sprites/eggs/igneo/egg_igneo_broken.png" id="24_iarty"]
+[ext_resource type="AudioStream" uid="uid://djl85tp8ptiea" path="res://assets/audio/sfx/egg/egg_appear.ogg" id="26_tcd68"]
+[ext_resource type="AudioStream" uid="uid://blso30cyv60gc" path="res://assets/audio/sfx/egg/egg_wobble1.ogg" id="27_3mhcn"]
+[ext_resource type="AudioStream" uid="uid://bspuv4i07bhxj" path="res://assets/audio/sfx/egg/egg_wobble2.ogg" id="28_nc5fr"]
+[ext_resource type="AudioStream" uid="uid://b0javl0nxmvya" path="res://assets/audio/sfx/egg/egg_crack.ogg" id="29_3fqo2"]
+[ext_resource type="AudioStream" uid="uid://b1nq1tm6hj8rg" path="res://assets/audio/sfx/egg/egg_hatch.ogg" id="30_nlgwl"]
+[ext_resource type="Texture2D" uid="uid://mbsq3557mb2b" path="res://assets/sprites/creatures/normal/norm_front1.png" id="42_csdio"]
+[ext_resource type="Texture2D" uid="uid://csrwox6hvw8fy" path="res://assets/sprites/creatures/normal/norm_front2.png" id="43_p6l88"]
+[ext_resource type="Texture2D" uid="uid://b4o8fi6cpoeix" path="res://assets/sprites/creatures/normal/norm_back1.png" id="44_57f5r"]
+[ext_resource type="Texture2D" uid="uid://dl57ed0j4ad4l" path="res://assets/sprites/creatures/normal/norm_back2.png" id="45_84vju"]
+[ext_resource type="Texture2D" uid="uid://bjnge3fu87y72" path="res://assets/sprites/creatures/normal/norm_front_DID.png" id="46_ps7y1"]
+[ext_resource type="Texture2D" uid="uid://ctgfbr7w0qnv3" path="res://assets/sprites/creatures/normal/norm_front_DII.png" id="47_4c8xy"]
+[ext_resource type="Texture2D" uid="uid://bfh0qyktf0fji" path="res://assets/sprites/creatures/normal/norm_back_DSD.png" id="48_jhuvt"]
+[ext_resource type="Texture2D" uid="uid://bccr828ojtl01" path="res://assets/sprites/creatures/normal/norm_back_DSI.png" id="49_smcir"]
+[ext_resource type="Texture2D" uid="uid://dqc1yf3lw3kpx" path="res://assets/sprites/creatures/normal/norm_front_blink1.png" id="50_2eo8w"]
+[ext_resource type="Texture2D" uid="uid://bor2sc3w06im2" path="res://assets/sprites/creatures/normal/norm_front_blink2.png" id="51_t7hiy"]
+[ext_resource type="Texture2D" uid="uid://c5ap57erqyd42" path="res://assets/sprites/creatures/aqua/aqua_front1.png" id="52_13nov"]
+[ext_resource type="Texture2D" uid="uid://lts5ta13dihq" path="res://assets/sprites/creatures/aqua/aqua_front2.png" id="53_yg7m7"]
+[ext_resource type="Texture2D" uid="uid://bmb7fms4dholc" path="res://assets/sprites/creatures/aqua/aqua_back1.png" id="54_7ovee"]
+[ext_resource type="Texture2D" uid="uid://b315wykri3a3t" path="res://assets/sprites/creatures/aqua/aqua_back2.png" id="55_7figm"]
+[ext_resource type="Texture2D" uid="uid://djvtxcckvi0q1" path="res://assets/sprites/creatures/aqua/aqua_front_DID.png" id="56_r0h7t"]
+[ext_resource type="Texture2D" uid="uid://hkx84n7pynp3" path="res://assets/sprites/creatures/aqua/aqua_front_DII.png" id="57_4mw0a"]
+[ext_resource type="Texture2D" uid="uid://dafxvcxmvujpc" path="res://assets/sprites/creatures/aqua/aqua_back_DSD.png" id="58_a54x0"]
+[ext_resource type="Texture2D" uid="uid://cnwp7pi5t35jj" path="res://assets/sprites/creatures/aqua/aqua_back_DSI.png" id="59_weayx"]
+[ext_resource type="Texture2D" uid="uid://dmaqp3qc7inyp" path="res://assets/sprites/creatures/aqua/aqua_front_blink1.png" id="60_hl0eo"]
+[ext_resource type="Texture2D" uid="uid://dedu33ob7klyh" path="res://assets/sprites/creatures/aqua/aqua_front_blink2.png" id="61_nov6g"]
+[ext_resource type="Texture2D" uid="uid://4bmxp7vgdt0n" path="res://assets/sprites/creatures/flora/flora_front1.png" id="62_708gh"]
+[ext_resource type="Texture2D" uid="uid://fi0op22sbcoe" path="res://assets/sprites/creatures/flora/flora_front2.png" id="63_gnlq8"]
+[ext_resource type="Texture2D" uid="uid://bl8551avffm6" path="res://assets/sprites/creatures/flora/flora_back1.png" id="64_qa0xl"]
+[ext_resource type="Texture2D" uid="uid://chjj12fxn6rdf" path="res://assets/sprites/creatures/flora/flora_back2.png" id="65_lv3yw"]
+[ext_resource type="Texture2D" uid="uid://dtd4a8p0jreu7" path="res://assets/sprites/creatures/flora/flora_front_DID.png" id="66_5q1ge"]
+[ext_resource type="Texture2D" uid="uid://v6ngp6iqvs7p" path="res://assets/sprites/creatures/flora/flora_front_DII.png" id="67_nch24"]
+[ext_resource type="Texture2D" uid="uid://cjmf4pci27pc4" path="res://assets/sprites/creatures/flora/flora_back_DSD.png" id="68_h7ea0"]
+[ext_resource type="Texture2D" uid="uid://mcl24hlw7fbl" path="res://assets/sprites/creatures/flora/flora_back_DSI.png" id="69_p2wxp"]
+[ext_resource type="Texture2D" uid="uid://sicxbo38wsvh" path="res://assets/sprites/creatures/flora/flora_front_blink1.png" id="70_rf4q7"]
+[ext_resource type="Texture2D" uid="uid://bs4bju5p2acif" path="res://assets/sprites/creatures/flora/flora_front_blink2.png" id="71_76koy"]
+[ext_resource type="Texture2D" uid="uid://cqhicotg4cut5" path="res://assets/sprites/creatures/igneo/igneo_front1.png" id="72_ktb27"]
+[ext_resource type="Texture2D" uid="uid://dylkqcmc0iufb" path="res://assets/sprites/creatures/igneo/igneo_front2.png" id="73_uil6m"]
+[ext_resource type="Texture2D" uid="uid://b526w1nrfsdlr" path="res://assets/sprites/creatures/igneo/igneo_back1.png" id="74_so1ur"]
+[ext_resource type="Texture2D" uid="uid://b47uba7v3ykcu" path="res://assets/sprites/creatures/igneo/igneo_back2.png" id="75_4jthf"]
+[ext_resource type="Texture2D" uid="uid://ce3v5r8mba5y4" path="res://assets/sprites/creatures/igneo/igneo_front_DID.png" id="76_2ntqj"]
+[ext_resource type="Texture2D" uid="uid://4i48dhfud46i" path="res://assets/sprites/creatures/igneo/igneo_front_DII.png" id="77_0nt4r"]
+[ext_resource type="Texture2D" uid="uid://bro3pv81bldtd" path="res://assets/sprites/creatures/igneo/igneo_back_DSD.png" id="78_xqjv3"]
+[ext_resource type="Texture2D" uid="uid://b0xba785f2ko4" path="res://assets/sprites/creatures/igneo/igneo_back_DSI.png" id="79_e6xh0"]
+[ext_resource type="Texture2D" uid="uid://ce5jtmi560lsk" path="res://assets/sprites/creatures/igneo/igneo_front_blink1.png" id="80_6bk4a"]
+[ext_resource type="Texture2D" uid="uid://ce2ugp3oxi7p5" path="res://assets/sprites/creatures/igneo/igneo_front_blink2.png" id="81_x2ac1"]
 
 [sub_resource type="Environment" id="Environment_0bbpv"]
 background_mode = 1
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_qmy6f"]
+shader = ExtResource("12_bjd11")
+shader_parameter/brightness_boost = 1.1
+shader_parameter/contrast_boost = 1.05
+shader_parameter/scanline_strength = 0.22
+shader_parameter/chroma_px = 0.35
+shader_parameter/bleed_px = 0.75
+shader_parameter/bleed_strength = 0.25
+shader_parameter/curvature = 0.08
+shader_parameter/vignette_strength = 0.2
+shader_parameter/noise_amount = 0.02
+shader_parameter/flash_scanline_dampen = 0.8
+shader_parameter/enable_mask = 0.0
+shader_parameter/mask_strength = 0.35
+shader_parameter/mask_scale_px = 1.0
+
 [node name="Main" type="Node2D"]
 script = ExtResource("1_rarhs")
+boot_music = ExtResource("2_1nqs0")
 
 [node name="Background" type="ColorRect" parent="."]
+z_index = -100
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -23,25 +118,127 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0, 0, 0, 1)
 
+[node name="WorldEnv" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_0bbpv")
+
+[node name="BitsLayer" type="Node2D" parent="."]
+
+[node name="BitsManager" type="Control" parent="BitsLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+script = ExtResource("4_vcsgt")
+flash_duration = 3.0
+ritual_hold_time = 5.0
+sfx_orbit_loops = Array[AudioStream]([ExtResource("4_dg70y"), ExtResource("5_pnhog"), ExtResource("6_2c4at")])
+sfx_merge_rise = Array[AudioStream]([ExtResource("7_g6wdg"), ExtResource("8_hq6as"), ExtResource("9_kxyth")])
+sfx_bit_spawn = Array[AudioStream]([ExtResource("10_cobve"), ExtResource("11_cmqll"), ExtResource("12_8cp6k")])
+sfx_ritual_start = ExtResource("13_8b871")
+sfx_ritual_end = ExtResource("14_v0vrg")
+
 [node name="Egg" type="Sprite2D" parent="."]
 position = Vector2(360, 640)
-texture = ExtResource("1_rvslj")
 script = ExtResource("3_nxtc6")
-broken_texture = ExtResource("4_jlsqs")
+tex_norm = ExtResource("17_x1gp3")
+tex_norm_broken = ExtResource("18_le2d2")
+tex_aqua = ExtResource("19_gexia")
+tex_aqua_broken = ExtResource("20_fun0h")
+tex_flora = ExtResource("21_oqdxe")
+tex_flora_broken = ExtResource("22_4pmbt")
+tex_igneo = ExtResource("23_4pegn")
+tex_igneo_broken = ExtResource("24_iarty")
+tex_xeno = ExtResource("1_rvslj")
+tex_xeno_broken = ExtResource("4_jlsqs")
+sfx_egg_appear = ExtResource("26_tcd68")
+sfx_egg_wobble1 = ExtResource("27_3mhcn")
+sfx_egg_wobble2 = ExtResource("28_nc5fr")
+sfx_egg_crack = ExtResource("29_3fqo2")
+sfx_egg_hatch = ExtResource("30_nlgwl")
+wobble_hectic_amp = 10.0
+creature_path = NodePath("../Creature")
 
 [node name="CrackFX" type="GPUParticles2D" parent="Egg"]
 emitting = false
 
 [node name="Creature" type="Sprite2D" parent="."]
 visible = false
-texture = ExtResource("2_0bbpv")
+script = ExtResource("6_jlsqs")
+norm_front1 = ExtResource("42_csdio")
+norm_front2 = ExtResource("43_p6l88")
+norm_back1 = ExtResource("44_57f5r")
+norm_back2 = ExtResource("45_84vju")
+norm_did = ExtResource("46_ps7y1")
+norm_dii = ExtResource("47_4c8xy")
+norm_dsd = ExtResource("48_jhuvt")
+norm_dsi = ExtResource("49_smcir")
+norm_blink1 = ExtResource("50_2eo8w")
+norm_blink2 = ExtResource("51_t7hiy")
+aqua_front1 = ExtResource("52_13nov")
+aqua_front2 = ExtResource("53_yg7m7")
+aqua_back1 = ExtResource("54_7ovee")
+aqua_back2 = ExtResource("55_7figm")
+aqua_did = ExtResource("56_r0h7t")
+aqua_dii = ExtResource("57_4mw0a")
+aqua_dsd = ExtResource("58_a54x0")
+aqua_dsi = ExtResource("59_weayx")
+aqua_blink1 = ExtResource("60_hl0eo")
+aqua_blink2 = ExtResource("61_nov6g")
+flora_front1 = ExtResource("62_708gh")
+flora_front2 = ExtResource("63_gnlq8")
+flora_back1 = ExtResource("64_qa0xl")
+flora_back2 = ExtResource("65_lv3yw")
+flora_did = ExtResource("66_5q1ge")
+flora_dii = ExtResource("67_nch24")
+flora_dsd = ExtResource("68_h7ea0")
+flora_dsi = ExtResource("69_p2wxp")
+flora_blink1 = ExtResource("70_rf4q7")
+flora_blink2 = ExtResource("71_76koy")
+igneo_front1 = ExtResource("72_ktb27")
+igneo_front2 = ExtResource("73_uil6m")
+igneo_back1 = ExtResource("74_so1ur")
+igneo_back2 = ExtResource("75_4jthf")
+igneo_did = ExtResource("76_2ntqj")
+igneo_dii = ExtResource("77_0nt4r")
+igneo_dsd = ExtResource("78_xqjv3")
+igneo_dsi = ExtResource("79_e6xh0")
+igneo_blink1 = ExtResource("80_6bk4a")
+igneo_blink2 = ExtResource("81_x2ac1")
+xeno_front1 = ExtResource("7_wp0k4")
+xeno_front2 = ExtResource("8_1iba3")
+xeno_back1 = ExtResource("8_bjd11")
+xeno_back2 = ExtResource("10_yxlcp")
+xeno_did = ExtResource("9_1nqs0")
+xeno_dii = ExtResource("9_bjd11")
+xeno_dsd = ExtResource("11_1iba3")
+xeno_dsi = ExtResource("12_yxlcp")
+xeno_blink1 = ExtResource("15_bb450")
+xeno_blink2 = ExtResource("16_nfivy")
+allow_idle_wander = true
+bits_manager_path = NodePath("../BitsLayer/BitsManager")
+poop_scene = ExtResource("9_wp0k4")
+bubble_scale = 2.0
 
-[node name="BitsLayer" type="Node2D" parent="."]
+[node name="FlashOverlay" type="CanvasLayer" parent="."]
+script = ExtResource("3_0bbpv")
 
-[node name="BitsManager" type="Node2D" parent="BitsLayer"]
-script = ExtResource("4_vcsgt")
+[node name="Flash" type="ColorRect" parent="FlashOverlay"]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 
-[node name="InputCanvas" type="Node2D" parent="."]
+[node name="InputCanvas" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 0
+mouse_filter = 2
 
 [node name="Stroke" type="Line2D" parent="InputCanvas"]
 width = 6.0
@@ -58,22 +255,19 @@ offset_right = 40.0
 offset_bottom = 23.0
 text = "Estado: Egg"
 
-[node name="FlashOverlay" type="CanvasLayer" parent="."]
-script = ExtResource("3_0bbpv")
-
-[node name="Flash" type="ColorRect" parent="FlashOverlay"]
-visible = false
+[node name="TapCatcher" type="Control" parent="."]
+layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 
-[node name="WorldEnv" type="WorldEnvironment" parent="."]
-environment = SubResource("Environment_0bbpv")
+[node name="CRTLayer" type="CanvasLayer" parent="."]
 
-[node name="TapCatcher" type="Control" parent="."]
-layout_mode = 3
+[node name="CRT" type="ColorRect" parent="CRTLayer"]
+material = SubResource("ShaderMaterial_qmy6f")
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0

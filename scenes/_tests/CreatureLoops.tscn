@@ -1,0 +1,43 @@
+[gd_scene load_steps=9 format=3 uid="uid://xqyje2qnnxho"]
+
+[ext_resource type="Texture2D" uid="uid://mbsq3557mb2b" path="res://assets/sprites/creatures/normal/norm_front1.png" id="1_ln4rw"]
+[ext_resource type="AnimationLibrary" uid="uid://batxawxkmeiph" path="res://assets/libr/aqua_emo.res" id="2_hewow"]
+[ext_resource type="AnimationLibrary" uid="uid://cebljn1dupqw3" path="res://assets/libr/flora_emo.res" id="3_ib0ji"]
+[ext_resource type="AnimationLibrary" uid="uid://2hl1yry4qnns" path="res://assets/libr/igneo_emo.res" id="4_ykb2s"]
+[ext_resource type="AnimationLibrary" uid="uid://ek16q2nshljp" path="res://assets/libr/norm_emo.res" id="5_onweu"]
+[ext_resource type="AnimationLibrary" uid="uid://n2bf5gybhets" path="res://assets/libr/xeno_emo.res" id="6_yxnc0"]
+
+[sub_resource type="Animation" id="Animation_0768p"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Body:texture")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [ExtResource("1_ln4rw")]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_hewow"]
+_data = {
+&"RESET": SubResource("Animation_0768p")
+}
+
+[node name="CreatureLoops" type="Node2D"]
+
+[node name="Body" type="Sprite2D" parent="."]
+texture = ExtResource("1_ln4rw")
+
+[node name="Anim" type="AnimationPlayer" parent="."]
+libraries = {
+&"": SubResource("AnimationLibrary_hewow"),
+&"aqua_emo": ExtResource("2_hewow"),
+&"flora_emo": ExtResource("3_ib0ji"),
+&"igneo_emo": ExtResource("4_ykb2s"),
+&"norm_emo": ExtResource("5_onweu"),
+&"xeno_emo": ExtResource("6_yxnc0")
+}
